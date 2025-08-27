@@ -1,5 +1,4 @@
 ## [Main title](../README.md)
-### [Interview questions](full.md)
 # DB/SQL
 
 ## Оглавление
