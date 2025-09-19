@@ -50,7 +50,6 @@
 ## 1. Kimball vs Inmon — what they are, how to model, and when to choose
 
 ### 1) The Problem Both Approaches Solve
-
 We need to integrate data from multiple sources (CRM, billing, website, payments), bring it to a consistent format, and provide the business with fast and clear reporting.
 **The difference** is not whether there is a database, but how it is modeled and in what sequence we move towards analytical data marts.
 ---
