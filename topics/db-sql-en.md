@@ -3,7 +3,7 @@
 
 ## Оглавление
 
-- [1. Что такое SQL и для чего он используется?](#1-что-такое-sql-и-для-чего-он-используется)
+- [1. Kimball vs Inmon — what they are, how to model, and when to choose](#1-что-такое-sql-и-для-чего-он-используется)
 - [2. Разница между SQL и NoSQL базами данных](#2-разница-между-sql-и-nosql-базами-данных)
 - [3. Какие операции можно выполнять с помощью SQL, для чего они нужны и их порядок выполнения?](#3-какие-операции-можно-выполнять-с-помощью-sql-для-чего-они-нужны-и-их-порядок-выполнения)
 - [4. Какие типы JOIN-ов существуют и в чем их отличия ?](#4-какие-типы-join-ов-существуют-и-в-чем-их-отличия-)
@@ -47,14 +47,132 @@
 - [43. В чем отличие BASE и ACID подходов?](#43-в-чем-отличие-BASE-и-ACID-подходов)
 - [44. У вас есть таблица логов с миллиардами строк. Как вы будете ускорять поиск по дате и `user_id`?](#44-у-вас-есть-таблица-логов-с-миллиардами-строк-как-вы-будете-ускорять-поиск-по-дате-и-user_id)
 
-## 1. Что такое SQL и для чего он используется?
-DICK
+## 1. Kimball vs Inmon — what they are, how to model, and when to choose
 
-**SQL** (Structured Query Language — язык структурированных запросов) — это предметно-ориентированный декларативный язык программирования, предназначенный для работы с реляционными базами данных.  
-Он является основным языком для выполнения таких задач, как:
-- извлечение данных,
-- изменение данных,
-- администрирование базы данных.
+### 1) The Problem Both Approaches Solve
+We need to integrate data from multiple sources (CRM, billing, website, payments), bring it to a consistent format, and provide the business with fast and clear reporting.
+**The difference** is not whether there is a database, but how it is modeled and in what sequence we move towards analytical data marts.
+---
+### 2) Kimball Approach (Dimensional Modeling)
+
+### Idea
+We build **data marts** directly for analytics, in the form of **star schemas**:  
+- A **fact table** in the center with numeric metrics and foreign keys to dimensions.  
+- **Dimensions** are “context” tables: Customer, Product, Time, Geography, etc.  
+- BI queries are straightforward: facts + filters/slices by dimensions.
+
+### Key Concepts
+- **Grain** — the lowest level of detail in a fact (e.g., “one payment attempt”).  
+- **Fact types**:
+  - Transactional (events, transactions)
+  - Periodic Snapshot (snapshots at regular intervals, e.g., daily balances)
+  - Accumulating Snapshot (processes with milestones: order → payment → shipment)  
+- **Conformed dimensions** — shared dimensions across marts (one `dim_customer` used in both sales and marketing).  
+- **SCD (Slowly Changing Dimensions)**:
+  - Type 1 — overwrite (no history)
+  - Type 2 — keep history with effective dates
+  - Type 3 — limited history, e.g., “previous value” in a separate column  
+- **Star vs Snowflake**:
+  - **Star** — denormalized dimensions, fewer joins.
+  - **Snowflake** — partially normalized, less duplication, more joins.
+
+### Pros / Cons
+**Pros**:  
+- Fast time-to-value (reports available quickly).  
+- Simple and intuitive for BI/analysts.  
+- Efficient for analytical queries.
+
+**Cons**:  
+- Possible duplication in dimensions.  
+- Harder to guarantee a single version of truth across a very large enterprise.
+
+---
+
+### 3) Inmon Approach (Enterprise Data Warehouse in 3NF)
+
+### Idea
+First we build a **centralized EDW** in **normalized form (3NF)**. This is the “big, correct warehouse”:  
+- Entities and relationships are modeled cleanly (minimal redundancy).  
+- Reference data is unified across the company.  
+- On top of EDW, we later build **data marts** (often dimensional, Kimball-style).
+
+### Multi-layered Architecture
+- **Staging**: raw ingested data with minimal logic.  
+- **EDW (3NF)**: normalized entities, the single version of truth.  
+- **Data Marts (Dimensional)**: denormalized marts for BI.
+
+
+### Pros / Cons
+**Pros**:  
+- Strong integration and consistency across domains.  
+- Easy to extend with new domains without duplicating reference data.  
+- Good foundation for MDM, governance, and compliance.  
+
+**Cons**:  
+- Slower time-to-value (longer until reports appear).  
+- Queries against EDW are complex (lots of joins). BI usually consumes data marts, not EDW directly.
+---
+
+### 4) Comparison in Simple Terms
+
+| Criterium | Kimball (marts directly) | Inmon (EDW 3NF → marts) |
+|---|---|---|
+| Goal | Fast and clear reports, BI-friendly | Single version of truth across the enterprise |
+| Starting point | Directly build star/snowflake | Centralized normalized EDW first |
+| Structure | Denormalized dimensions, fact in the center | Fully normalized (3NF) |
+| Speed | Faster time-to-value | Slower, more planning |
+| Redundancy | Possible in dimensions | Minimized |
+| Query complexity | Simple for BI | Complex in EDW, simple in marts |
+| Best fit | Small/medium teams, BI focus | Large enterprises, many domains, governance |
+
+---
+
+## 5) Physical Implementation
+
+- **One system**: EDW and marts can live in the same DB, in different schemas (e.g., Snowflake/Postgres/BigQuery).  
+  - `edw_*` — normalized EDW tables  
+  - `dm_*` or `mart_*` — dimensional marts  
+- **Different systems**: EDW stored in heavy-duty DB (Snowflake, Teradata, Oracle), marts in separate BI-optimized DB (ClickHouse, BigQuery).  
+
+Choice depends on scale, performance needs, governance.
+
+---
+
+## 6) Common Interview Questions
+
+**Q: What is a conformed dimension?**  
+**A:** A dimension that is used consistently across multiple marts/domains (e.g., one `dim_customer` shared between sales and payments). It enables cross-domain reporting.  
+
+**Q: How do you choose the grain of a fact?**  
+**A:** Define the business question first, then fix the lowest level of detail (e.g., one payment attempt). All fields must align with that grain.  
+
+**Q: SCD — when Type 1 vs 2 vs 3?**  
+**A:**  
+- Type 1 — overwrite, no history (e.g., correcting a typo).  
+- Type 2 — full history with effective dates (e.g., customer moved country).  
+- Type 3 — limited history (rare, e.g., storing previous value in one column).  
+
+**Q: Semi-additive metrics (balances)?**  
+**A:** In periodic snapshots: you cannot sum balances over time. Either use end-of-period balances or compute deltas.  
+
+**Q: Multi-currency design?**  
+**A:** Fact stores transaction currency + exchange rate reference. Reporting currency conversions handled via a bridge.  
+
+**Q: Late-arriving facts or early-arriving dimensions?**  
+**A:**  
+- Fact before dimension → insert inferred member in dimension, update later.  
+- Dimension updated retroactively → SCD2 with valid date ranges.  
+
+**Q: When to choose Kimball vs Inmon?**  
+**A:**  
+- Kimball: fast insights, simpler orgs, focus on BI.  
+- Inmon: large enterprises, many domains, strong governance needs.  
+- Hybrid: EDW core + dimensional marts is very common.
+
+---
+
+
+
 
 ### Основные компоненты SQL
 
