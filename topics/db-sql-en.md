@@ -602,6 +602,24 @@ The `student_courses` table links students and courses, implementing the "many-t
 **Normalization** is a database design method aimed at organizing table structure to reduce data redundancy and improve data integrity.  
 The process is performed step by step and is divided into several normal forms (1NF, 2NF, 3NF, BCNF, 4NF), each with its own rules.
 
+### Main goals:
+1. **Elimination of redundancy**  
+   If the same data is duplicated in different places, this leads to a large database size, maintenance complexity, and contradictory values.  
+   Normalization eliminates duplication: each logical "piece of knowledge" is stored in one place.
+   In addition, redundancy directly causes **anomalies**:
+   - *Insertion anomaly* — you cannot add data without additional values (for example, a new customer without an order).
+   - *Update anomaly* — you have to change the same value in several places, and some records may be missed.
+   - *Deletion anomaly* — when deleting unnecessary data, you can accidentally lose useful related data.
+2. **Improved data integrity**  
+      When a value is stored in only one table, the risk of "desynchronization" disappears.  
+      For example, if a city name is stored only in the city directory, then when it changes, it is updated for all related records.
+3. **Simplified maintenance and modification**  
+      If the structure follows normal forms, it is easier to add new attributes, change existing ones, and extend the model.  
+      There is no risk of "breaking" data by updating something only in one place.
+4. **Query flexibility**  
+      SQL queries become more logical: we join tables by keys, not search for values in "mixed fields".  
+      This simplifies analytics and reporting.
+
 ### Example of normalization (Customer Invoices scenario)
 
 #### Unnormalized table (0NF)
