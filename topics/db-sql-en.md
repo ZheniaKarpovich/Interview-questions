@@ -127,7 +127,7 @@ First we build a **centralized EDW** in **normalized form (3NF)**. This is the �
 
 ---
 
-## 5) Physical Implementation
+### 5) Physical Implementation
 
 - **One system**: EDW and marts can live in the same DB, in different schemas (e.g., Snowflake/Postgres/BigQuery).  
   - `edw_*` — normalized EDW tables  
@@ -136,9 +136,7 @@ First we build a **centralized EDW** in **normalized form (3NF)**. This is the �
 
 Choice depends on scale, performance needs, governance.
 
----
-
-## 6) Common Interview Questions
+### 6) Common Interview Questions
 
 **Q: What is a conformed dimension?**  
 **A:** A dimension that is used consistently across multiple marts/domains (e.g., one `dim_customer` shared between sales and payments). It enables cross-domain reporting.  
@@ -169,230 +167,236 @@ Choice depends on scale, performance needs, governance.
 - Inmon: large enterprises, many domains, strong governance needs.  
 - Hybrid: EDW core + dimensional marts is very common.
 
----
 
+## 2. Main components of SQL
 
+- **DDL (Data Definition Language)** — defines and modifies the structure of the database.
+- **DML (Data Manipulation Language)** — manipulates the data, responsible for adding, changing, and deleting records.
+- **DCL (Data Control Language)** — manages access rights and permissions in the database.
+- **TCL (Transaction Control Language)** — controls transactions (e.g., committing changes with `COMMIT` or rolling them back with `ROLLBACK`).
 
+## 2. Difference between SQL and NoSQL Databases
 
-### Основные компоненты SQL
+SQL and NoSQL databases offer different paradigms, each designed for certain types of data and ways of processing them.
 
-- **DDL (Data Definition Language)** — язык определения данных. Используется для описания и изменения структуры базы данных.
-- **DML (Data Manipulation Language)** — язык манипулирования данными. Отвечает за добавление, изменение и удаление данных в базе.
-- **DCL (Data Control Language)** — язык управления доступом. Используется для управления правами и разрешениями в базе данных.
-- **TCL (Transaction Control Language)** — язык управления транзакциями. Регулирует работу с транзакциями (например, фиксация изменений `COMMIT` или их откат `ROLLBACK`). 
+### Key Differences
 
-## 2. Разница между SQL и NoSQL базами данных
+- **SQL**: Primarily intended for structured (and partly semi-structured) data that follows a predefined schema.
+- **NoSQL**: Suitable for unstructured or semi-structured data that evolves over time, providing schema flexibility.
 
-SQL и NoSQL базы данных предлагают разные парадигмы, каждая из которых предназначена для определённых типов данных и способов их обработки.
+- **SQL**: Uses the SQL (Structured Query Language) for modifying and retrieving data.
+- **NoSQL**: Provides various APIs (e.g., for document-oriented and key-value stores); support for structured query languages depends on the specific implementation.
 
-### Основные различия
+- **SQL**: Typically guarantees compliance with **ACID** principles (Atomicity, Consistency, Isolation, Durability), ensuring data integrity.
+- **NoSQL**: Often optimized for high performance and horizontal scalability, sometimes at the expense of strict consistency.
 
-- **SQL**: Предназначены в первую очередь для структурированных (и частично полуструктурированных) данных, которые соответствуют заранее определённой схеме.
-- **NoSQL**: Подходят для неструктурированных или полуструктурированных данных, которые постепенно эволюционируют, обеспечивая гибкость в схемах.
+### Main Types of NoSQL Databases
 
-- **SQL**: Использует язык SQL (Structured Query Language) для модификации и извлечения данных.
-- **NoSQL**: Предоставляет различные API (например, интерфейсы для документо-ориентированных и ключ-значение хранилищ); использование структурированных языков запросов зависит от конкретной реализации.
+- **Document-Oriented Stores**
+  - Examples: MongoDB, Couchbase
+  - Features: each record is a standalone document (usually JSON). Relationships are handled via embedded documents or references.
+  - Example: a user and their blog posts may be stored in one document or linked through references.
 
-- **SQL**: Обычно гарантирует соответствие принципам **ACID** (атомарность, согласованность, изоляция, долговечность), что обеспечивает целостность данных.
-- **NoSQL**: Часто оптимизированы для высокой производительности и горизонтального масштабирования, иногда в ущерб строгой согласованности.
+- **Key-Value Stores**
+  - Examples: Redis, Amazon DynamoDB
+  - Features: data is stored as unique keys and values. No mandatory schema.
+  - Example: shopping cart items linked to a user ID.
 
-### Основные типы NoSQL баз данных
+- **Wide-Column Stores (Column Families)**
+  - Examples: Apache Cassandra, HBase
+  - Features: data is grouped into column families, similar to tables, but with a flexible schema.
+  - Example: user profiles where some users may have unique attributes.
 
-- **Документо-ориентированные хранилища**
-    - Примеры: MongoDB, Couchbase
-    - Особенности: каждая запись — это самостоятельный документ (обычно JSON). Связи реализуются через вложенные документы или ссылки.
-    - Пример: пользователь и его посты в блоге могут храниться в одном документе или быть связаны через ссылки.
+- **Graph Databases**
+  - Examples: Neo4j, JanusGraph
+  - Features: optimized for data with complex relationships. Entities are represented as nodes and relationships as edges.
+  - Example: social networks with friendship relationships.
 
-- **Ключ-значение хранилища**
-    - Примеры: Redis, Amazon DynamoDB
-    - Особенности: данные хранятся в виде уникальных ключей и значений. Нет обязательной схемы.
-    - Пример: товары в корзине интернет-магазина, связанные с ID пользователя.
+### Differences in Data Modeling
 
-- **Широкостолбцовые базы (Column Families)**
-    - Примеры: Apache Cassandra, HBase
-    - Особенности: данные группируются в семейства столбцов, аналогичные таблицам, но с гибкой схемой.
-    - Пример: профили пользователей, где у одних могут быть уникальные атрибуты.
+- **SQL**: normalization to minimize redundancy and update anomalies.
+- **NoSQL**: denormalization — packing related data together to reduce the number of queries.
 
-- **Графовые базы данных**
-    - Примеры: Neo4j, JanusGraph
-    - Особенности: оптимизированы для данных со сложными связями. Сущности представлены как узлы, а связи — как рёбра.
-    - Пример: социальные сети с управлением связями «дружбы».
+### ID Generation
 
-### Отличия в моделировании данных
+- **SQL**: often uses auto-incrementing unique IDs.
+- **NoSQL**: unique identifiers can be generated by external systems or at the document level.
 
-- **SQL**: нормализация для минимизации избыточности и аномалий при обновлении.
-- **NoSQL**: денормализация — данные упаковываются вместе, чтобы сократить количество запросов.
+### Working with Relationships
 
-### Генерация ID
+- **SQL**: relationships are implemented through keys (primary and foreign).
+- **NoSQL**: relationships may be implemented via embedded documents, references, or graph structures.
 
-- **SQL**: часто используется автоинкрементное уникальное ID.
-- **NoSQL**: уникальные идентификаторы могут генерироваться внешними системами или на уровне документа.
+### Transaction Support
 
-### Работа с отношениями данных
+- **SQL**: transactions are a standard feature.
+- **NoSQL**: transaction support depends on the implementation.
 
-- **SQL**: связи реализуются через ключи (первичные и внешние).
-- **NoSQL**: связи могут быть реализованы через вложенные документы, ссылки или графовые структуры.
+### Consistency Levels
 
-### Поддержка транзакций
+- **SQL**: ensures strict consistency.
+- **NoSQL**: offers different models — from strict consistency to **eventual consistency**.
 
-- **SQL**: транзакции — стандартная часть функционала.
-- **NoSQL**: поддержка транзакций зависит от реализации.
+### Scalability
 
-### Уровни согласованности данных
+- **SQL**: vertical (increasing the power of a single server).
+- **NoSQL**: horizontal (distributing load across multiple servers).
 
-- **SQL**: обеспечивает строгую согласованность.
-- **NoSQL**: предлагает разные модели — от строгой до eventual consistency (согласованности в конечном счёте).
+### Data Flexibility
 
-### Масштабируемость
+- **SQL**: rigid schema, harder to adapt to changing data structures.
+- **NoSQL**: supports dynamic schema updates, providing high flexibility.
 
-- **SQL**: вертикальная (мощность одного сервера увеличивается).
-- **NoSQL**: горизонтальная (распределение нагрузки на множество серверов).
+### Data Integrity and Validation
 
-### Гибкость данных
+- **SQL**: integrity is ensured by constraints and strict data types.
+- **NoSQL**: relies more on the application to handle integrity and validation.
 
-- **SQL**: строгая схема, трудно адаптировать к меняющимся структурам данных.
-- **NoSQL**: поддерживает динамическое обновление схемы, что даёт высокую гибкость.
+## 3. What operations can be performed with SQL, what are they used for, and their execution order?
 
-### Целостность и валидация данных
+In SQL, commands are divided into several categories.
 
-- **SQL**: целостность обеспечивается ограничениями и строгими типами данных.
-- **NoSQL**: больше полагается на приложение для управления целостностью и проверкой данных.  
+### DDL (Data Definition Language)
+Used to define and modify the structure of database objects.
 
-## 3. Какие операции можно выполнять с помощью SQL, для чего они нужны и их порядок выполнения?
+- **CREATE** — create objects (tables, views, schemas, etc.)
+- **ALTER** — modify the structure of objects
+- **DROP** — delete objects
+- **TRUNCATE** — quickly remove all rows from a table (cannot be rolled back)
+- **RENAME** — rename an object
 
-В SQL команды делятся на несколько категорий.
+> ⚡ Feature: DDL commands are auto-committed and cannot be rolled back.
 
-### DDL (Data Definition Language) — язык определения данных
-Используется для описания и изменения структуры объектов базы данных.
+### DML (Data Manipulation Language)
+Used to work with data in tables.
 
-- **CREATE** — создание объектов (таблицы, представления, схемы и т.д.)
-- **ALTER** — изменение структуры объектов
-- **DROP** — удаление объектов
-- **TRUNCATE** — очистка таблицы (быстрое удаление всех строк без возможности отката)
-- **RENAME** — переименование объекта
+- **SELECT** — read data
+- **INSERT** — add rows
+- **UPDATE** — modify rows
+- **DELETE** — remove rows
 
-> ⚡ Особенность: DDL-команды фиксируются автоматически (**auto-commit**) и не могут быть откатаны.
+> ⚡ Feature: DML commands support transactions and can be rolled back with **ROLLBACK**.
 
-### DML (Data Manipulation Language) — язык манипуляции данными
-Используется для работы с данными в таблицах.
+#### Main operations in a SELECT query
+- **SELECT** — defines the columns or expressions to output
+- **FROM** — specifies the data sources (tables, views)
+- **JOIN** — combines data from different tables
+- **WHERE** — filters rows before grouping
+- **GROUP BY** — groups rows into aggregates
+- **HAVING** — filters grouped results
+- **ORDER BY** — sorts the output
+- **LIMIT** — limits the number of returned rows
 
-- **SELECT** — чтение данных
-- **INSERT** — добавление строк
-- **UPDATE** — изменение строк
-- **DELETE** — удаление строк
+#### Logical execution order of a query
+Although we write SQL in one order, it is executed as:  
+`FROM → JOIN → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT`
 
-> ⚡ Особенность: DML-команды поддерживают транзакции и могут быть отменены (**ROLLBACK**).
+> This explains, for example, why aliases from `SELECT` cannot be used in `WHERE`.
 
-#### Основные операции в SELECT-запросе
-- **SELECT** — определяет столбцы или выражения для вывода
-- **FROM** — задаёт источники данных (таблицы, представления)
-- **JOIN** — объединяет данные из разных таблиц
-- **WHERE** — фильтрует строки до группировки
-- **GROUP BY** — группирует строки в агрегаты
-- **HAVING** — фильтрует сгруппированные результаты
-- **ORDER BY** — сортирует вывод
-- **LIMIT** — ограничивает количество возвращаемых строк
+### DCL (Data Control Language)
+Used to manage user permissions.
 
-#### Логический порядок выполнения запроса
-Хотя пишем мы команды в одном порядке, выполняются они так: FROM → JOIN → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT
+- **GRANT** — grant privileges
+- **REVOKE** — revoke privileges
 
-> Это объясняет, например, почему нельзя использовать алиасы из `SELECT` в `WHERE`.
+### TCL (Transaction Control Language)
+Used to control transactions.
 
-### DCL (Data Control Language) — язык управления доступом
-Используется для работы с правами пользователей.
+- **COMMIT** — persist changes
+- **ROLLBACK** — undo changes
+- **SAVEPOINT** — set a savepoint inside a transaction
 
-- **GRANT** — выдаёт права
-- **REVOKE** — отзывает права
+📌 **Quick summary:**
+- **DDL** manages the structure of the database (CREATE/ALTER/DROP).
+- **DML** manages the data (SELECT/INSERT/UPDATE/DELETE).
+- **DCL** manages access (GRANT/REVOKE).
+- **TCL** manages transactions (COMMIT/ROLLBACK/SAVEPOINT).
+- The logical execution order of `SELECT` differs from its written order, and this is important for understanding queries correctly.
 
-### TCL (Transaction Control Language) — язык управления транзакциями
-Регулирует выполнение транзакций.
+## 4. What types of JOINs exist and what are their differences?
 
-- **COMMIT** — зафиксировать изменения
-- **ROLLBACK** — откатить изменения
-- **SAVEPOINT** — установить точку сохранения в транзакции
+**JOIN** in SQL is used to combine rows from two or more tables based on a related column (usually a key).  
+Understanding the types of joins is important for working correctly with normalized data and avoiding accidental Cartesian products.
 
-📌 **Краткий итог:**
-- DDL управляет структурой базы (CREATE/ALTER/DROP).
-- DML управляет данными (SELECT/INSERT/UPDATE/DELETE).
-- DCL управляет доступом (GRANT/REVOKE).
-- TCL управляет транзакциями (COMMIT/ROLLBACK/SAVEPOINT).
-- Логический порядок выполнения SELECT отличается от синтаксического и это важно для правильного понимания запросов.  
+### Main types of JOIN
 
-## 4. Какие типы JOIN-ов существуют и в чем их отличия ?
+- **INNER JOIN** — returns only matching rows in both tables.
+- **LEFT JOIN** — returns all rows from the left table and matches from the right; if no matches, `NULL` is used.
+- **RIGHT JOIN** — opposite of LEFT JOIN: returns all rows from the right table and matches from the left.
+- **FULL JOIN (FULL OUTER JOIN)** — returns all rows from both tables, filling with `NULL` where there are no matches.
+- **CROSS JOIN** — forms a Cartesian product (each row from the first table is combined with all rows from the second).
+- **SELF JOIN** — a table joined with itself (often used for hierarchies, e.g., “employee → manager”).
 
-**JOIN** в SQL используется для объединения строк из двух или более таблиц на основе связанного столбца (обычно ключа).  
-Понимание типов соединений важно для правильной работы с нормализованными данными и предотвращения случайных декартовых произведений.
-
-### Основные типы JOIN
-
-- **INNER JOIN** — возвращает только совпадающие строки в обеих таблицах.
-- **LEFT JOIN** — возвращает все строки из левой таблицы и совпадения из правой; если совпадений нет, подставляются `NULL`.
-- **RIGHT JOIN** — противоположен LEFT JOIN: возвращает все строки из правой таблицы и совпадения из левой.
-- **FULL JOIN (FULL OUTER JOIN)** — возвращает все строки из обеих таблиц, подставляя `NULL` там, где нет совпадений.
-- **CROSS JOIN** — формирует декартово произведение (каждая строка из первой таблицы соединяется со всеми строками второй).
-- **SELF JOIN** — соединение таблицы с самой собой (часто используется для иерархий, например «сотрудник → менеджер»).
-
-### Визуализация типов JOIN
+### Visualization of JOIN types
 
 ![SQL JOINS](../images/sql-joins.png)
 
-## 5. Что такое алгоритмы соединения таблиц в SQL и какие они бывают ?
+## 5. What are join algorithms in SQL and what types exist?
 
-Когда мы пишем `JOIN`, СУБД должна выбрать **алгоритм соединения**.  
-Основные варианты:
+When we write a `JOIN`, the DBMS must choose a **join algorithm**.  
+The main options are:
 
-### Nested Loop Join (вложенные циклы)
-- Простейший алгоритм: для каждой строки из первой таблицы ищем совпадение во второй.
-- Работает как «двойной цикл».
+### Nested Loop Join
+- The simplest algorithm: for each row from the first table, the DBMS searches for a match in the second.
+- Works like a “double loop”.
 
-**Когда эффективен:**
-- Маленькие таблицы.
-- Есть индекс по ключу соединения (тогда внутренняя таблица быстро ищется).
+**When effective:**
+- Small tables.
+- An index exists on the join key (the inner table can be searched quickly).
 
-**Минусы:**
-- Очень медленный на больших данных (O(N*M)).
+**Cons:**
+- Very slow on large data sets (O(N*M)).
 
-### Merge Join (соединение слиянием)
-- Обе таблицы сортируются по ключу соединения.
-- Затем СУБД «идёт» по двум спискам, сравнивая строки.
+---
 
-**Когда эффективен:**
-- Таблицы уже отсортированы (например, по индексу).
-- Подходит для больших объёмов данных.
+### Merge Join
+- Both tables are sorted by the join key.
+- The DBMS then “walks” through both lists, comparing rows.
 
-**Минусы:**
-- Требует сортировки, если данные не упорядочены.
+**When effective:**
+- Tables are already sorted (e.g., by an index).
+- Suitable for large volumes of data.
 
-### Hash Join (соединение через хэш-таблицу)
-- Строится **хэш-таблица** для меньшей таблицы по ключу соединения.
-- Для строк из второй таблицы ищутся совпадения через хэш.
+**Cons:**
+- Requires sorting if data is unordered.
 
-**Когда эффективен:**
-- Большие таблицы без индексов.
-- Соединение по условию равенства (`=`).
+---
 
-**Минусы:**
-- Требует памяти для хэш-таблицы.
-- При очень больших таблицах может сбрасывать данные на диск (Hash Join spill).
+### Hash Join
+- A **hash table** is built for the smaller table on the join key.
+- Rows from the larger table are checked against this hash.
 
-### Adaptive Join (динамический выбор, в SQL Server, Oracle)
-- СУБД начинает выполнение, а потом **меняет алгоритм на лету**, если оценка кардинальности (число строк) оказалась неверной.
+**When effective:**
+- Large tables without indexes.
+- Join condition is equality (`=`).
 
-### Сравнение алгоритмов
+**Cons:**
+- Requires memory for the hash table.
+- For very large tables, may spill to disk (Hash Join spill).
 
-| Алгоритм        | Подходит для              | Сложность      | Требования                |
-|-----------------|---------------------------|----------------|---------------------------|
-| Nested Loop     | Маленькие таблицы, индекс | O(N*M)         | Индекс для ускорения      |
-| Merge Join      | Отсортированные данные    | O(N+M)         | Нужна сортировка          |
-| Hash Join       | Большие неотсортированные | O(N+M)         | Память под хэш-таблицу    |
-| Adaptive Join   | Динамическая оптимизация  | Зависит от СУБД| Нужна поддержка в движке  |
+---
 
+### Adaptive Join (SQL Server, Oracle)
+- The DBMS starts execution and then **switches the algorithm on the fly** if the cardinality estimate (number of rows) turns out to be wrong.
 
-#### Итог
-- **Nested Loop** — прост, но медленный без индекса.
-- **Merge Join** — хорош при сортированных данных.
-- **Hash Join** — самый частый выбор для больших таблиц.
-- **Adaptive Join** — «умный» выбор, если СУБД поддерживает.
+---
+
+### Comparison of algorithms
+
+| Algorithm      | Best for                  | Complexity | Requirements            |
+|----------------|---------------------------|------------|-------------------------|
+| Nested Loop    | Small tables, with index  | O(N*M)     | Index for efficiency    |
+| Merge Join     | Sorted data               | O(N+M)     | Sorting required        |
+| Hash Join      | Large unsorted tables     | O(N+M)     | Memory for hash table   |
+| Adaptive Join  | Dynamic optimization      | Depends    | Engine support required |
+
+---
+
+### Summary
+- **Nested Loop** — simple, but slow without an index.
+- **Merge Join** — good when data is sorted.
+- **Hash Join** — the most common choice for large tables.
+- **Adaptive Join** — “smart” option if the DBMS supports it.
 
 ## 6. Что такое Hash Join (хэш-соединение)?
 
