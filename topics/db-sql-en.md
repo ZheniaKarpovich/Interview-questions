@@ -52,7 +52,7 @@
 ### 1) The Problem Both Approaches Solve
 We need to integrate data from multiple sources (CRM, billing, website, payments), bring it to a consistent format, and provide the business with fast and clear reporting.
 **The difference** is not whether there is a database, but how it is modeled and in what sequence we move towards analytical data marts.
----
+
 ### 2) Kimball Approach (Dimensional Modeling)
 
 ### Idea
@@ -86,8 +86,6 @@ We build **data marts** directly for analytics, in the form of **star schemas**:
 - Possible duplication in dimensions.  
 - Harder to guarantee a single version of truth across a very large enterprise.
 
----
-
 ### 3) Inmon Approach (Enterprise Data Warehouse in 3NF)
 
 ### Idea
@@ -111,7 +109,6 @@ First we build a **centralized EDW** in **normalized form (3NF)**. This is the �
 **Cons**:  
 - Slower time-to-value (longer until reports appear).  
 - Queries against EDW are complex (lots of joins). BI usually consumes data marts, not EDW directly.
----
 
 ### 4) Comparison in Simple Terms
 
@@ -124,8 +121,6 @@ First we build a **centralized EDW** in **normalized form (3NF)**. This is the �
 | Redundancy | Possible in dimensions | Minimized |
 | Query complexity | Simple for BI | Complex in EDW, simple in marts |
 | Best fit | Small/medium teams, BI focus | Large enterprises, many domains, governance |
-
----
 
 ### 5) Physical Implementation
 
@@ -347,8 +342,6 @@ The main options are:
 **Cons:**
 - Very slow on large data sets (O(N*M)).
 
----
-
 ### Merge Join
 - Both tables are sorted by the join key.
 - The DBMS then “walks” through both lists, comparing rows.
@@ -359,8 +352,6 @@ The main options are:
 
 **Cons:**
 - Requires sorting if data is unordered.
-
----
 
 ### Hash Join
 - A **hash table** is built for the smaller table on the join key.
@@ -374,12 +365,8 @@ The main options are:
 - Requires memory for the hash table.
 - For very large tables, may spill to disk (Hash Join spill).
 
----
-
 ### Adaptive Join (SQL Server, Oracle)
 - The DBMS starts execution and then **switches the algorithm on the fly** if the cardinality estimate (number of rows) turns out to be wrong.
-
----
 
 ### Comparison of algorithms
 
@@ -390,7 +377,6 @@ The main options are:
 | Hash Join      | Large unsorted tables     | O(N+M)     | Memory for hash table   |
 | Adaptive Join  | Dynamic optimization      | Depends    | Engine support required |
 
----
 
 ### Summary
 - **Nested Loop** — simple, but slow without an index.
@@ -398,64 +384,64 @@ The main options are:
 - **Hash Join** — the most common choice for large tables.
 - **Adaptive Join** — “smart” option if the DBMS supports it.
 
-## 6. Что такое Hash Join (хэш-соединение)?
+## 6. What is Hash Join?
 
-**Hash Join** — это алгоритм соединения таблиц в SQL, который использует **хэш-таблицу** для ускорения поиска совпадений между строками.  
-Применяется, когда мы делаем `JOIN` двух таблиц по условию равенства (`=`).
+**Hash Join** is a table join algorithm in SQL that uses a **hash table** to speed up finding matches between rows.  
+It is used when we perform `JOIN` of two tables on equality condition (`=`).
 
-### Как работает Hash Join
-Алгоритм обычно состоит из двух фаз:
+### How Hash Join works
+The algorithm usually consists of two phases:
 
-1. **Build (построение)**
-  - СУБД выбирает меньшую таблицу (или результат подзапроса).
-  - Создаёт по ключу соединения **хэш-таблицу** в памяти.
-  - В этой хэш-таблице строки хранятся в виде пар «ключ → строка».
+1. **Build (construction)**
+- The DBMS selects the smaller table (or subquery result).
+- Creates a **hash table** in memory by the join key.
+- In this hash table, rows are stored as "key → row" pairs.
 
-2. **Probe (поиск)**
-  - СУБД последовательно читает строки из второй (большей) таблицы.
-  - Для каждой строки вычисляет хэш по ключу соединения.
-  - Проверяет, есть ли совпадение в хэш-таблице.
-  - Если есть — строки соединяются и попадают в результат.
+2. **Probe (search)**
+- The DBMS sequentially reads rows from the second (larger) table.
+- For each row, it calculates a hash by the join key.
+- Checks if there is a match in the hash table.
+- If there is — rows are joined and included in the result.
 
-### Пример
+### Example
 ```sql
   SELECT *
   FROM orders o
   JOIN customers c
     ON o.customer_id = c.customer_id;
 ```
-- PostgreSQL может выбрать **Hash Join**, если:
-  - `customers` небольшая таблица → для неё строится хэш-таблица.
-  - `orders` большая таблица → для каждой строки ищется совпадение по `customer_id` в хэше.
+- PostgreSQL may choose **Hash Join** if:
+  - `customers` is a small table → a hash table is built for it.
+  - `orders` is a large table → for each row, a match is searched by `customer_id` in the hash.
 
-### Когда эффективен Hash Join
-- Соединение по условию **равенства** (`=`).
-- Таблицы большие, и у них **нет подходящего индекса**.
-- Одна таблица существенно меньше другой.
+### When Hash Join is effective
+- Join by **equality** condition (`=`).
+- Tables are large and have **no suitable index**.
+- One table is significantly smaller than the other.
 
-### Сравнение с другими алгоритмами
-| Алгоритм     | Как работает                                  | Когда лучше |
+### Comparison with other algorithms
+| Algorithm     | How it works                                  | When better |
 |--------------|-----------------------------------------------|-------------|
-| **Nested Loop** | Для каждой строки левой таблицы ищет в правой | Хорошо для маленьких таблиц или при наличии индекса |
-| **Merge Join**  | Сортирует обе таблицы и проходит их последовательно | Эффективно при отсортированных данных |
-| **Hash Join**   | Строит хэш-таблицу и ищет совпадения через хэш | Оптимально для больших таблиц без индексов |
+| **Nested Loop** | For each row of the left table, searches in the right | Good for small tables or when index exists |
+| **Merge Join**  | Sorts both tables and traverses them sequentially | Efficient with sorted data |
+| **Hash Join**   | Builds a hash table and searches for matches through hash | Optimal for large tables without indexes |
 
-### Итог
-- **Hash Join** — это соединение через хэш-таблицу.
-- Обычно быстрее Nested Loop, если данных много и индексов нет.
-- Но требует дополнительной памяти для хранения хэш-таблицы.
+### Summary
+- **Hash Join** is a join through a hash table.
+- Usually faster than Nested Loop if there is a lot of data and no indexes.
+- But requires additional memory to store the hash table.
 
-## 7. Что такое первичный ключ (Primary Key) в базе данных?
+## 7. What is a Primary Key in a database?
 
-**Первичный ключ** — это столбец или набор столбцов, которые однозначно идентифицируют каждую строку в таблице базы данных.
+**Primary Key** is a column or set of columns that uniquely identify each row in a database table.
 
-### Основные свойства:
-- Значения **должны быть уникальными**.
-- Значения **не могут быть NULL**.
-- В таблице может быть **только один первичный ключ**, но он может состоять из нескольких столбцов (**составной ключ**).
-- Большинство СУБД автоматически создают индекс для первичного ключа, чтобы ускорить поиск.
+### Key properties:
+- Values **must be unique**.
+- Values **cannot be NULL**.
+- A table can have **only one primary key**, but it can consist of multiple columns (**composite key**).
+- Most DBMSs automatically create an index for the primary key to speed up searches.
 
-### Пример
+### Example
 
 ```sql
 CREATE TABLE employees (
@@ -463,82 +449,81 @@ CREATE TABLE employees (
     name VARCHAR(100)
 );
 ```
-### Что делает этот код?
+### What does this code do?
 
-1. Создаёт таблицу `employees`.
-2. Определяет столбец `employee_id` как **PRIMARY KEY**.
-3. Обеспечивает уникальность каждого значения `employee_id`.
-4. Запрещает использование `NULL` для `employee_id`.
-5. Даёт возможность использовать `employee_id` как ссылку (внешний ключ) в других таблицах.
-6. Автоматически создаёт индекс по `employee_id` для ускорения поиска. 
+1. Creates the `employees` table.
+2. Defines the `employee_id` column as **PRIMARY KEY**.
+3. Ensures uniqueness of each `employee_id` value.
+4. Prohibits using `NULL` for `employee_id`.
+5. Allows using `employee_id` as a reference (foreign key) in other tables.
+6. Automatically creates an index on `employee_id` to speed up searches.
 
-## 8. Что такое внешний ключ (Foreign Key) и как он используется?
+## 8. What is a Foreign Key and how is it used?
 
-**Внешний ключ (FOREIGN KEY)** — это столбец или набор столбцов в одной таблице, которые ссылаются на первичный ключ в другой таблице.
+**Foreign Key (FOREIGN KEY)** is a column or set of columns in one table that references a primary key in another table.
 
-### Основные свойства:
-- Внешний ключ всегда указывает на **PRIMARY KEY** или **UNIQUE ключ** в родительской таблице.
-- Его назначение — обеспечивать **ссылочную целостность**, то есть согласованность связей между таблицами.
-- Он не допускает вставку значений, которых нет в родительской таблице.
-- Может определять действия при изменении или удалении строки в родительской таблице:
-  - `ON DELETE CASCADE` — удаляет связанные записи.
-  - `ON DELETE SET NULL` — устанавливает значение `NULL` во внешнем ключе.
-  - `RESTRICT` — запрещает удаление/обновление, если есть связанные записи.
+### Key properties:
+- A foreign key always points to a **PRIMARY KEY** or **UNIQUE key** in the parent table.
+- Its purpose is to ensure **referential integrity**, that is, consistency of relationships between tables.
+- It prevents insertion of values that don't exist in the parent table.
+- Can define actions when changing or deleting a row in the parent table:
+  - `ON DELETE CASCADE` — deletes related records.
+  - `ON DELETE SET NULL` — sets `NULL` value in the foreign key.
+  - `RESTRICT` — prohibits deletion/update if there are related records.
 
-### Пример
+### Example
 
 ```sql
-CREATE TABLE employees (
+  CREATE TABLE employees (
     employee_id INT PRIMARY KEY,
     department_id INT,
     FOREIGN KEY (department_id) REFERENCES departments(department_id)
-);
+  );
 ```
 
-## 9. В чем разница между PRIMARY KEY и UNIQUE ключом?
+## 9. What is the difference between PRIMARY KEY and UNIQUE key?
 
 ### PRIMARY KEY
-- Однозначно идентифицирует каждую строку в таблице.
-- Может состоять из **одного или нескольких столбцов** (составной ключ).
-- В таблице может быть **только один PRIMARY KEY**.
-- Значения **не могут быть NULL**.
-- При создании автоматически создаётся индекс.
+- Uniquely identifies each row in a table.
+- Can consist of **one or multiple columns** (composite key).
+- A table can have **only one PRIMARY KEY**.
+- Values **cannot be NULL**.
+- Automatically creates an index when created.
 
-### UNIQUE ключ
-- Гарантирует, что значения в столбце (или наборе столбцов) будут уникальны.
-- В таблице может быть **несколько UNIQUE ключей**.
-- В отличие от PRIMARY KEY, допускает **одно значение NULL** (поведение может отличаться в разных СУБД).
-- Тоже создаёт уникальный индекс, но не обязательно является «основным идентификатором» таблицы.
+### UNIQUE key
+- Guarantees that values in a column (or set of columns) will be unique.
+- A table can have **multiple UNIQUE keys**.
+- Unlike PRIMARY KEY, allows **one NULL value** (behavior may differ in different DBMSs).
+- Also creates a unique index, but doesn't necessarily serve as the "main identifier" of the table.
 
-### Кратко
-- `PRIMARY KEY` — главный идентификатор строки, обязателен для таблицы и всегда **NOT NULL + UNIQUE**.
-- `UNIQUE` — дополнительное ограничение для предотвращения дубликатов в других столбцах, но допускает `NULL` (в большинстве СУБД).
+### Summary
+- `PRIMARY KEY` — main row identifier, required for table and always **NOT NULL + UNIQUE**.
+- `UNIQUE` — additional constraint to prevent duplicates in other columns, but allows `NULL` (in most DBMSs).
 
-### Пример
+### Example
 
 ```sql
-CREATE TABLE users (
-    user_id INT PRIMARY KEY,
-    email VARCHAR(255) UNIQUE,
-    phone VARCHAR(20) UNIQUE
-);
+  CREATE TABLE users (
+      user_id INT PRIMARY KEY,
+      email VARCHAR(255) UNIQUE,
+      phone VARCHAR(20) UNIQUE
+  );
 ```
+## 10. What types of relationships exist between tables and how are they implemented?
 
-## 10. Какие виды связей между таблицами существуют и как они реализуются?
+In relational databases, there are three main types of relationships between tables: **1:1 (one-to-one)**, **1:M (one-to-many)**, and **M:N (many-to-many)**.
 
-В реляционных базах данных существуют три основных типа связей между таблицами: **1:1 (один к одному)**, **1:M (один ко многим)** и **M:N (многие ко многим)**.
+### 1:1 Relationship (One-to-One)
 
-### Связь 1:1 (One-to-One)
+**Definition:** each record in the first table corresponds to no more than one record in the second, and vice versa.
 
-**Определение:** каждой записи в первой таблице соответствует не более одной записи во второй, и наоборот.
+**Example:**
+- `users` table — basic user information.
+- `user_profiles` table — additional information (e.g., passport data).
 
-**Пример:**
-- Таблица `users` — основная информация о пользователях.
-- Таблица `user_profiles` — дополнительная информация (например, паспортные данные).
-
-**Реализация:**  
-Во второй таблице (`user_profiles`) создаётся внешний ключ (`FOREIGN KEY`), который также является `PRIMARY KEY`.  
-Это гарантирует, что у каждого пользователя будет не более одного профиля.
+**Implementation:**  
+In the second table (`user_profiles`), a foreign key (`FOREIGN KEY`) is created, which is also a `PRIMARY KEY`.  
+This guarantees that each user will have no more than one profile.
 
 ```sql
 CREATE TABLE users (  
@@ -553,16 +538,16 @@ CREATE TABLE user_profiles (
 );
 ```
 
-### Связь 1:M (One-to-Many)
+### 1:M Relationship (One-to-Many)
 
-**Определение:** каждой записи в первой таблице может соответствовать много записей во второй, но каждая запись во второй таблице относится только к одной записи в первой.
+**Definition:** each record in the first table can correspond to many records in the second, but each record in the second table relates to only one record in the first.
 
-**Пример:**
-- Таблица `departments` — список отделов.
-- Таблица `employees` — список сотрудников.
+**Example:**
+- `departments` table — list of departments.
+- `employees` table — list of employees.
 
-**Реализация:**  
-Во второй таблице (`employees`) создаётся внешний ключ, который ссылается на первичный ключ первой таблицы (`departments`).
+**Implementation:**  
+In the second table (`employees`), a foreign key is created that references the primary key of the first table (`departments`).
 
 ```sql
 CREATE TABLE departments (  
@@ -578,17 +563,17 @@ CREATE TABLE employees (
 );
 ```
 
-### Связь M:N (Many-to-Many)
+### M:N Relationship (Many-to-Many)
 
-**Определение:** каждой записи в первой таблице может соответствовать много записей во второй, и наоборот.
+**Definition:** each record in the first table can correspond to many records in the second, and vice versa.
 
-**Пример:**
-- Таблица `students` — студенты.
-- Таблица `courses` — курсы.
-- Один студент может посещать много курсов, и один курс может посещаться многими студентами.
+**Example:**
+- `students` table — students.
+- `courses` table — courses.
+- One student can attend many courses, and one course can be attended by many students.
 
-**Реализация:**  
-Создаётся третья таблица (промежуточная или связующая), которая хранит пары ключей.
+**Implementation:**  
+A third table (intermediate or junction) is created that stores key pairs.
 
 ```sql
 CREATE TABLE students (  
@@ -610,27 +595,27 @@ CREATE TABLE student_courses (
 );
 ```
 
-Таблица `student_courses` связывает студентов и курсы, реализуя связь «многие ко многим».
+The `student_courses` table links students and courses, implementing the "many-to-many" relationship.
 
-## 11. Что такое нормализация? Объясните с примерами
+## 11. What is normalization? Explain with examples
 
-**Нормализация** — это метод проектирования базы данных, направленный на упорядочение структуры таблиц с целью уменьшения избыточности данных и повышения их целостности.  
-Процесс выполняется поэтапно и разделён на несколько нормальных форм (1NF, 2NF, 3NF, BCNF, 4NF), каждая из которых имеет свои правила.
+**Normalization** is a database design method aimed at organizing table structure to reduce data redundancy and improve data integrity.  
+The process is performed step by step and is divided into several normal forms (1NF, 2NF, 3NF, BCNF, 4NF), each with its own rules.
 
-### Пример нормализации (сценарий «Customer Invoices»)
+### Example of normalization (Customer Invoices scenario)
 
-#### Ненормализованная таблица (0NF)
+#### Unnormalized table (0NF)
 
 | ID | Name | Invoice No. | Invoice Date | Item No. | Description | Quantity | Unit Price |
 |----|------|-------------|--------------|----------|-------------|----------|------------|
 
-В таком виде все данные хранятся в одной таблице без структурной логики. Записи содержат и данные о клиенте, и данные о счёте, и данные о товарах. Это приводит к избыточности и аномалиям.
+In this form, all data is stored in one table without structural logic. Records contain both customer data, invoice data, and product data. This leads to redundancy and anomalies.
 
-#### Первая нормальная форма (1NF)
+#### First Normal Form (1NF)
 
-**Правило:** все ячейки должны быть атомарными (только одно значение). Нужно разделять связанные группы данных.
+**Rule:** all cells must be atomic (only one value). Related data groups need to be separated.
 
-В примере выделяем отдельные таблицы:
+In the example, we separate into individual tables:
 
 **Customer Details Table**
 
@@ -647,40 +632,40 @@ CREATE TABLE student_courses (
 | Invoice No. | Item No. | Description | Quantity | Unit Price |
 |-------------|----------|-------------|----------|------------|
 
-Теперь каждая таблица отвечает за свою сущность.
+Now each table is responsible for its own entity.
 
-#### Вторая нормальная форма (2NF)
+#### Second Normal Form (2NF)
 
-**Правило:** каждый неключевой столбец должен зависеть от всего составного ключа.
+**Rule:** each non-key column must depend on the entire composite key.
 
-В примере таблица `Items` уже удовлетворяет 2NF, так как `Description` и `Unit Price` зависят от всего ключа `(Invoice No., Item No.)`.
+In the example, the `Items` table already satisfies 2NF, since `Description` and `Unit Price` depend on the entire key `(Invoice No., Item No.)`.
 
-#### Третья нормальная форма (3NF)
+#### Third Normal Form (3NF)
 
-**Правило:** не должно быть транзитивных зависимостей. Неключевые столбцы должны зависеть только от первичного ключа.
+**Rule:** there should be no transitive dependencies. Non-key columns should depend only on the primary key.
 
-В нашем случае таблица `Invoices` уточняется так:
+In our case, the `Invoices` table is refined as follows:
 
-**Updated Invoices Table**  
+**Updated Invoices Table**
 
 | Invoice No. | Customer_ID | Invoice Date |
 |-------------|-------------|--------------|
 
-Здесь `Customer_ID` — единственный атрибут, связанный с клиентом.
+Here `Customer_ID` is the only attribute related to the customer.
 
-### Практические последствия
+### Practical implications
 
-- Более высокие нормальные формы повышают целостность данных, но могут усложнять работу с ними.
-- Нужно учитывать специфику приложения при выборе целевой нормальной формы.
+- Higher normal forms improve data integrity, but may complicate working with them.
+- The specifics of the application should be considered when choosing the target normal form.
 
-### Применение в реальном мире
+### Application in the real world
 
-- Большинство баз данных стремится хотя бы к 3NF.
-- Для задач, где важна полная целостность данных, используются 4NF и выше.
+- Most databases strive for at least 3NF.
+- For tasks where complete data integrity is important, 4NF and higher are used.
 
-### Пример SQL реализации (3NF)
+### Example SQL implementation (3NF)
 
-Создание таблицы клиентов:
+Creating a customers table:
 
 ```sql
 CREATE TABLE Customers (  
@@ -688,7 +673,7 @@ CREATE TABLE Customers (
   Name VARCHAR(50)  
 );
 
---Создание таблицы счетов:
+--Creating an invoices table:
 
 CREATE TABLE Invoices (  
   InvoiceNo INT PRIMARY KEY,  
@@ -697,7 +682,7 @@ CREATE TABLE Invoices (
   FOREIGN KEY (Customer_ID) REFERENCES Customers(ID)  
 );
 
---Создание таблицы товаров:
+--Creating an items table:
 
 CREATE TABLE Items (  
   InvoiceNo INT,  
@@ -710,68 +695,68 @@ CREATE TABLE Items (
 );
 ```
 
-Эта структура в 3NF разделяет клиентов, счета и товары на отдельные таблицы, что обеспечивает целостность данных и удобство при работе.
+This 3NF structure separates customers, invoices, and items into separate tables, ensuring data integrity and convenience in working with them.
 
-## 12. Что такое денормализация и когда её используют?
+## 12. What is denormalization and when is it used?
 
-**Денормализация** — это процесс оптимизации производительности базы данных за счёт уменьшения числа соединений (JOIN) и ускорения выборок, путём преднамеренного добавления избыточности данных.  
-Это противоположный подход нормализации: мы жертвуем частью целостности ради скорости.
+**Denormalization** is the process of optimizing database performance by reducing the number of joins and speeding up queries by deliberately adding data redundancy.  
+This is the opposite approach to normalization: we sacrifice some integrity for speed.
 
-### Основные техники денормализации
+### Main denormalization techniques
 
-1. **Уплощение связей (Flattening Relationships)**
-  - Объединение связанных таблиц для минимизации числа JOIN.
-  - Пример: объединение таблиц `Order` и `Product`, чтобы убрать связь многие-ко-многим.
+1. **Flattening Relationships**
+- Combining related tables to minimize the number of JOINs.
+- Example: combining `Order` and `Product` tables to remove many-to-many relationships.
 
-2. **Агрегация данных (Aggregating Data)**
-  - Предварительный расчёт значений для снижения нагрузки при запросах.
-  - Пример: добавление колонки `Sales_Total` в таблицу `Order`.
+2. **Aggregating Data**
+- Pre-calculating values to reduce load during queries.
+- Example: adding a `Sales_Total` column to the `Order` table.
 
-3. **Добавление избыточных данных (Adding Redundant Data)**
-  - Дублирование информации для уменьшения числа соединений.
-  - Пример: таблицы `Customer` и `Sales` обе содержат поле `Country`, хотя оно связано через `Customer`.
+3. **Adding Redundant Data**
+- Duplicating information to reduce the number of joins.
+- Example: both `Customer` and `Sales` tables contain a `Country` field, although it's related through `Customer`.
 
-### Типовые сценарии применения
+### Typical application scenarios
 
-- **Отчёты и аналитика (Reporting and Analytics)**
-  - Отчёты часто требуют соединений большого числа таблиц.
-  - Денормализация упрощает структуру и ускоряет генерацию отчётов.
+- **Reports and Analytics**
+  - Reports often require joins of many tables.
+  - Denormalization simplifies structure and speeds up report generation.
 
-- **Высоконагруженные транзакционные системы (High-Volume Transaction Systems)**
-  - Если допустима кратковременная несогласованность данных, денормализация ускоряет операции.
-  - Пример: в e-commerce допускается небольшая задержка обновления данных о продажах ради более быстрого оформления заказов.
+- **High-Volume Transaction Systems**
+  - If short-term data inconsistency is acceptable, denormalization speeds up operations.
+  - Example: in e-commerce, a small delay in sales data updates is acceptable for faster order processing.
 
-- **Системы с преобладанием чтения (Read-Mostly Applications)**
-  - Там, где много операций чтения и мало записи.
+- **Read-Mostly Applications**
+  - Where there are many read operations and few writes.
 
-- **Системы с интенсивным поиском и запросами (Search- and Query-Intensive Applications)**
-  - Поисковые движки часто хранят данные в денормализованной форме для ускорения поиска.
+- **Search- and Query-Intensive Applications**
+  - Search engines often store data in denormalized form to speed up search.
 
-- **Распределённые системы (Partitioning Data)**
-  - В NoSQL или Hadoop данные часто хранятся с избыточностью для ускорения доступа на разных узлах.
+- **Distributed Systems (Partitioning Data)**
+  - In NoSQL or Hadoop, data is often stored with redundancy to speed up access on different nodes.
 
-### Соображения и компромиссы
+### Considerations and trade-offs
 
-- **Производительность vs. согласованность**
-  - Денормализация ускоряет запросы, но снижает консистентность данных.
+- **Performance vs. consistency**
+  - Denormalization speeds up queries but reduces data consistency.
 
-- **Сложность обслуживания (Maintenance Challenges)**
-  - Избыточные данные нужно синхронизировать и обновлять.
+- **Maintenance challenges**
+  - Redundant data needs to be synchronized and updated.
 
-- **Простота эксплуатации (Operational Simplicity)**
-  - Иногда простая денормализованная структура удобнее, чем строгая нормализация.
+- **Operational simplicity**
+  - Sometimes a simple denormalized structure is more convenient than strict normalization.
 
-- **Гибкость запросов (Query Flexibility)**
-  - Нормализованные данные проще адаптировать под новые запросы и изменения схемы, а денормализованные структуры требуют дополнительных усилий для модификаций.
+- **Query flexibility**
+  - Normalized data is easier to adapt to new queries and schema changes, while denormalized structures require additional effort for modifications.
 
-### Итог
+### Summary
 
-Денормализация используется, когда **важнее скорость доступа и упрощение запросов**, чем строгая целостность данных.  
-Обычно она применяется:
-- в аналитических системах,
-- при очень больших объёмах данных,
-- в поисковых движках,
-- в e-commerce для ускорения отклика.
+Denormalization is used when **access speed and query simplification are more important** than strict data integrity.  
+It is usually applied:
+- in analytical systems,
+- with very large data volumes,
+- in search engines,
+- in e-commerce to speed up response.
 
 ## 13. Что такое индексы и как они улучшают производительность запросов?
 
