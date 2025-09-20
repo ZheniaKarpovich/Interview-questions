@@ -758,91 +758,89 @@ It is usually applied:
 - in search engines,
 - in e-commerce to speed up response.
 
-## 13. Что такое индексы и как они улучшают производительность запросов?
+## 13. What are indexes and how do they improve query performance?
 
-**Индекс** — это дополнительная структура данных в СУБД, которая хранит значения столбца (или столбцов) в отсортированном/оптимизированном для поиска виде вместе с указателями на соответствующие строки таблицы.
+**Index** is an additional data structure in a DBMS that stores column values (or columns) in a sorted/optimized form for search along with pointers to corresponding table rows.
 
-**Аналогия:**
-- Без индекса: ищешь слово в книге, перелистывая каждую страницу (полный перебор, table scan).
-- С индексом: смотришь в алфавитный указатель и сразу находишь нужную страницу.
+**Analogy:**
+- Without index: searching for a word in a book by flipping through every page (full scan, table scan).
+- With index: looking in the alphabetical index and immediately finding the right page.
 
-### Основные виды индексов
+### Main types of indexes
 
-#### Clustered Index (кластерный)
-1. **Что делает:** задаёт физический порядок хранения строк в таблице.
-2. **Ограничение:** только один на таблицу.
-3. **Пример:** если сделать `PRIMARY KEY order_id` (например, в SQL Server), по умолчанию это будет clustered-индекс — строки реально будут расположены по `order_id`.
-4. **Плюс:** быстрый поиск и сортировка по ключу.
-5. **Минус:** при вставке значений «не в конец» строки нужно переставлять → может быть медленно.
+#### Clustered Index
+1. **What it does:** sets the physical order of row storage in the table.
+2. **Limitation:** only one per table.
+3. **Example:** if you make `PRIMARY KEY order_id` (e.g., in SQL Server), by default this will be a clustered index — rows will actually be arranged by `order_id`.
+4. **Plus:** fast search and sorting by key.
+5. **Minus:** when inserting values "not at the end", rows need to be rearranged → can be slow.
 
-#### Non-Clustered Index (некластерный)
-- **Что делает:** хранит копию ключей + указатель на место в таблице (Row ID или кластерный ключ).
-- **Сколько можно:** хоть десятки на одну таблицу.
-- **Пример:**
+#### Non-Clustered Index
+- **What it does:** stores a copy of keys + pointer to location in table (Row ID or clustered key).
+- **How many allowed:** dozens per table.
+- **Example:**
 
 ```sql
   CREATE INDEX idx_orders_customer  
   ON orders(customer_id);
 ```
 
-- **Плюс:** быстро искать по неосновным полям.
-- **Минус:** после нахождения ключа СУБД всё равно идёт в таблицу за остальными полями (lookup).
+- **Plus:** fast search by non-primary fields.
+- **Minus:** after finding the key, the DBMS still goes to the table for other fields (lookup).
 
-#### Covering Index (покрывающий)
-- **Что делает:** содержит все поля, нужные для конкретного запроса — ключи и INCLUDE-колонки.
-- **Зачем:** чтобы не ходить в таблицу — всё читается из индекса.
-- **Пример:**
+#### Covering Index
+- **What it does:** contains all fields needed for a specific query — keys and INCLUDE columns.
+- **Why:** to avoid going to the table — everything is read from the index.
+- **Example:**
 ```sql
 CREATE INDEX idx_orders_cover  
 ON orders(customer_id, order_date)  
 INCLUDE(total_amount);
 ```
-Запрос:
+Query:
 ```sql
 SELECT customer_id, order_date, total_amount  
 FROM orders  
 WHERE customer_id = 101;
 ```
-может выполниться полностью из индекса.
+can be executed entirely from the index.
 
 #### Unique Index
-- **Назначение:** обеспечивает уникальность значений.
-- **Где появляется:** создаётся автоматически при `PRIMARY KEY` и `UNIQUE` ограничениях.
+- **Purpose:** ensures uniqueness of values.
+- **Where it appears:** created automatically with `PRIMARY KEY` and `UNIQUE` constraints.
 
-### Как индекс устроен внутри
+### How indexes work internally
 
-- Чаще всего используется **B-tree**: в узлах хранятся диапазоны значений и ссылки; поиск — `O(log N)` (а не `O(N)`).
-- Для полнотекстовых/геоданных могут применяться другие структуры: **hash**, **GiST**, **R-tree**.
+- Most commonly uses **B-tree**: nodes store value ranges and references; search is `O(log N)` (not `O(N)`).
+- For full-text/geo data, other structures may be used: **hash**, **GiST**, **R-tree**.
 
-### Когда индекс помогает
+### When indexes help
 
-- Условие в `WHERE` по колонке с индексом, выбирающее **малую долю строк**.
-- `JOIN` по индексированным колонкам.
-- `ORDER BY` / `GROUP BY` по индексируемым столбцам.
-- Частые точечные (`=`) и диапазонные (`BETWEEN`, `>`, `<`) запросы.
+- `WHERE` condition on indexed column selecting **small portion of rows**.
+- `JOIN` on indexed columns.
+- `ORDER BY` / `GROUP BY` on indexable columns.
+- Frequent point (`=`) and range (`BETWEEN`, `>`, `<`) queries.
 
-### Когда индекс не помогает
+### When indexes don't help
 
-- Очень маленькая таблица — полный скан быстрее.
-- Запросы, которые выбирают **>20–30%** строк — чтение всей таблицы может быть выгоднее.
-- Условия с функциями/выражениями на колонке (индекс не используется):
+- Very small table — full scan is faster.
+- Queries selecting **>20–30%** of rows — reading the entire table may be more beneficial.
+- Conditions with functions/expressions on column (index not used):
 
 ```sql
-    WHERE YEAR(order_date) = 2024    ← индекс по `order_date` не применится
+    WHERE YEAR(order_date) = 2024    ← index on `order_date` won't apply
 ```
-- Несeлeктивные условия (например, `WHERE gender = 'M'`, если 90% значений — `'M'`).
+- Non-selective conditions (e.g., `WHERE gender = 'M'`, if 90% of values are `'M'`).
 
----
+### Downsides of indexes
 
-### Минусы индексов
+- **Memory:** take up disk space.
+- **Write:** slow down `INSERT/UPDATE/DELETE` because indexes also need to be updated.
+- **Maintenance:** when changing table structure, indexes need to be rebuilt.
 
-- **Память:** занимают место на диске.
-- **Запись:** замедляют `INSERT/UPDATE/DELETE`, потому что индексы тоже нужно обновлять.
-- **Поддержка:** при изменении структуры таблицы индексы нужно перестраивать.
+### How to check if an index is being used
 
-### Как проверить, используется ли индекс
-
-**PostgreSQL (текст SQL):**
+**PostgreSQL (SQL text):**
 
 ```sql
   EXPLAIN ANALYZE  
@@ -851,13 +849,13 @@ WHERE customer_id = 101;
   WHERE customer_id = 123;
 ```
 
-Смотри, есть ли в плане **Index Scan** (PostgreSQL) или **Index Seek**/**Index Scan** (SQL Server).
-- *Index Seek* — быстрый адресный поиск по дереву.
-- *Index Scan* — последовательное чтение индекса целиком (лучше, чем table scan, но хуже seek).
+Look for **Index Scan** (PostgreSQL) or **Index Seek**/**Index Scan** (SQL Server) in the plan.
+- *Index Seek* — fast address search through tree.
+- *Index Scan* — sequential reading of entire index (better than table scan, but worse than seek).
 
-### Практический кейс
+### Practical case
 
-**Проблема:** в отчёте Power BI запрос
+**Problem:** in Power BI report, query
 
 ```sql
   SELECT customer_id, SUM(amount)  
@@ -866,404 +864,405 @@ WHERE customer_id = 101;
   GROUP BY customer_id;
 ```
 
-работал ~2 минуты.
+took ~2 minutes.
 
-**Решение:** создали покрывающий индекс
+**Solution:** created covering index
 ```sql
 CREATE INDEX idx_orders_perf  
 ON orders(order_date, customer_id)  
 INCLUDE(amount);
 ```
 
-— время выполнения сократилось до ~5 секунд.
+— execution time reduced to ~5 seconds.
 
-## 14. Что такое PL/SQL?
+## 14. What is PL/SQL?
 
-**a.** PL/SQL (Procedural Language/SQL) — это процедурное расширение Oracle для SQL,  
-которое позволяет комбинировать SQL-операторы с возможностями процедурного программирования.
+**a.** PL/SQL (Procedural Language/SQL) is Oracle's procedural extension to SQL,  
+which allows combining SQL statements with procedural programming capabilities.
 
-**b. Основные свойства:**
-1. **Блочная структура** — код организован в декларативные, исполняемые и обработчики исключений.
-2. **Интеграция с SQL** — позволяет встраивать DML-операторы и SELECT-запросы внутрь процедурного кода.
-3. **Переменные и типы данных** — поддержка SQL-типов данных и возможность объявления переменных, констант и курсоров.
-4. **Управляющие структуры** — поддержка `IF-THEN-ELSE`, `CASE` и циклов (`FOR`, `WHILE`, `LOOP`).
-5. **Обработка исключений** — встроенный механизм обработки ошибок через блоки `EXCEPTION`.
-6. **Модульность** — поддержка процедур, функций, пакетов и триггеров.
-7. **Производительность** — снижение сетевого трафика за счёт выполнения логики непосредственно в базе данных.
+**b. Key properties:**
+1. **Block structure** — code is organized into declarative, executable, and exception handling sections.
+2. **SQL integration** — allows embedding DML statements and SELECT queries within procedural code.
+3. **Variables and data types** — support for SQL data types and ability to declare variables, constants, and cursors.
+4. **Control structures** — support for `IF-THEN-ELSE`, `CASE`, and loops (`FOR`, `WHILE`, `LOOP`).
+5. **Exception handling** — built-in error handling mechanism through `EXCEPTION` blocks.
+6. **Modularity** — support for procedures, functions, packages, and triggers.
+7. **Performance** — reduces network traffic by executing logic directly in the database.
 
-**Пример:**
+**Example:**
 ```sql
   DECLARE
   v_total NUMBER;
   BEGIN
     SELECT COUNT(*) INTO v_total FROM employees;
-    DBMS_OUTPUT.PUT_LINE(’Total employees: ’ || v_total);
+    DBMS_OUTPUT.PUT_LINE('Total employees: ' || v_total);
   EXCEPTION
   WHEN OTHERS THEN
-    DBMS_OUTPUT.PUT_LINE(‘Error occurred’);
+    DBMS_OUTPUT.PUT_LINE('Error occurred');
   END;
 ```
-**Ограничения PL/SQL:**
-1. **Сложность сопровождения** — чрезмерное размещение бизнес-логики в БД усложняет отладку и тестирование.
-2. **Ограниченная повторная используемость** — код PL/SQL нельзя напрямую использовать во внешних приложениях, написанных на других языках.
-3. **Зависимость от версии** — некоторые функции доступны только в новых версиях Oracle.
-4. **Потенциальная нагрузка на БД** — перенос тяжёлой логики в PL/SQL может перегрузить сервер вместо распределения нагрузки на уровень приложений.
-5. **Необходимость специализированных навыков** — не все разработчики владеют PL/SQL, что может ограничить гибкость команды.
+**PL/SQL limitations:**
+1. **Maintenance complexity** — excessive placement of business logic in DB complicates debugging and testing.
+2. **Limited reusability** — PL/SQL code cannot be directly used in external applications written in other languages.
+3. **Version dependency** — some functions are only available in newer Oracle versions.
+4. **Potential DB load** — moving heavy logic to PL/SQL can overload the server instead of distributing load to application layer.
+5. **Need for specialized skills** — not all developers know PL/SQL, which can limit team flexibility.
 
-**Вывод:**  
-PL/SQL лучше всего использовать выборочно, сочетая логику на стороне базы данных с обработкой на стороне приложений.
+**Conclusion:**  
+PL/SQL is best used selectively, combining database-side logic with application-side processing.
 
-## 15. Какая разница между процедурным и декларативным подходом в SQL?
+## 15. What is the difference between procedural and declarative approach in SQL?
 
-**Declarative SQL** — фокусируется на том, *какой результат* нужен, оставляя *как* его получить на усмотрение СУБД.
-  Например, простой оператор `SELECT` указывает требуемые данные, а СУБД сама определяет лучший план выполнения. Декларативный SQL лаконичен и оптимизируется базой данных, но предоставляет мало контроля над порядком выполнения.
+**Declarative SQL** focuses on *what result* is needed, leaving *how* to get it up to the DBMS.
+For example, a simple `SELECT` statement specifies the required data, and the DBMS itself determines the best execution plan. Declarative SQL is concise and optimized by the database, but provides little control over execution order.
 
-**Procedural SQL** — объединяет SQL с программными конструкциями для явного указания, *как* выполнять операции.
-В PL/SQL, например, можно использовать циклы, условия и обработку ошибок для реализации сложной бизнес-логики.
-Такой подход даёт больше контроля и гибкости, но может быть многословным и сложнее в сопровождении.
+**Procedural SQL** combines SQL with programming constructs to explicitly specify *how* to perform operations.
+In PL/SQL, for example, you can use loops, conditions, and error handling to implement complex business logic.
+This approach provides more control and flexibility, but can be verbose and harder to maintain.
 
-## 16. Объясните свойства ACID в контексте баз данных
+## 16. Explain ACID properties in the context of databases
 
-Свойства **ACID** описывают основные гарантии, которые должна обеспечивать система управления базами данных (СУБД) при выполнении транзакций. Они включают:
+**ACID** properties describe the fundamental guarantees that a database management system (DBMS) must provide when executing transactions. They include:
 
 1. **Atomicity (Атомарность)**
-  - Транзакция рассматривается как единое целое: либо выполняется полностью, либо не выполняется вовсе.
-  - Если во время выполнения возникает ошибка, все изменения откатываются (rollback).
+- A transaction is treated as a single unit: either it executes completely or not at all.
+- If an error occurs during execution, all changes are rolled back (rollback).
 
 2. **Consistency (Согласованность)**
-  - Транзакция должна переводить базу данных из одного согласованного состояния в другое.
-  - Все правила, ограничения и связи данных (constraints, triggers) сохраняются.
+- A transaction must transition the database from one consistent state to another.
+- All rules, constraints, and data relationships (constraints, triggers) are preserved.
 
 3. **Isolation (Изолированность)**
-  - Одновременное выполнение транзакций не должно приводить к конфликтам.
-  - Результат работы параллельных транзакций эквивалентен их последовательному выполнению (serializability).
+- Concurrent transaction execution should not lead to conflicts.
+- The result of parallel transactions is equivalent to their sequential execution (serializability).
 
 4. **Durability (Надёжность/Долговечность)**
-  - После фиксации (commit) результат транзакции сохраняется в базе данных даже при сбоях системы или отключении питания.
+- After commit, the transaction result is saved in the database even in case of system failures or power outages.
 
-**Пример:**  
-Если пользователь переводит деньги между счетами:
-- Атомарность гарантирует, что деньги спишутся с одного счёта и зачислятся на другой, либо операция не произойдёт вообще.
-- Согласованность гарантирует, что сумма на обоих счетах будет соответствовать правилам.
-- Изолированность гарантирует, что параллельные переводы не «перепутают» данные.
-- Надёжность гарантирует, что после успешного перевода данные не потеряются.  
+**Example:**  
+If a user transfers money between accounts:
+- Atomicity guarantees that money will be debited from one account and credited to another, or the operation won't happen at all.
+- Consistency guarantees that the sum on both accounts will comply with the rules.
+- Isolation guarantees that parallel transfers won't "mix up" data.
+- Durability guarantees that after successful transfer, data won't be lost.
 
-## 17. Что такое уровень изоляции транзакции (Transaction Isolation Levels)? Какие виды бывают и какие проблемы они решают ?
-**Уровень изоляции транзакции** — это правило, определяющее, как одна транзакция видит данные, изменяемые другими транзакциями, и насколько строго база данных защищает данные от конкурирующих изменений.
+## 17. What is transaction isolation level? What types exist and what problems do they solve?
 
-Стандартизированы в **SQL (ANSI/ISO SQL-92)**.
+**Transaction isolation level** is a rule that determines how one transaction sees data being modified by other transactions and how strictly the database protects data from competing changes.
 
-### Проблемы, которые решает изоляция
-При параллельном выполнении транзакций могут возникать аномалии:
+Standardized in **SQL (ANSI/ISO SQL-92)**.
+
+### Problems that isolation solves
+When transactions run concurrently, anomalies can occur:
 
 1. **Dirty Read (грязное чтение)**
-  - Транзакция читает данные, которые ещё не зафиксированы (`COMMIT`).
-  - Если транзакция-источник откатится, данные окажутся «несуществующими».
+- A transaction reads data that hasn't been committed yet (`COMMIT`).
+- If the source transaction rolls back, the data turns out to be "non-existent".
 
 2. **Non-Repeatable Read (неповторяемое чтение)**
-  - В одной транзакции дважды читается одна и та же строка, но результат разный, так как другая транзакция изменила данные.
+- In one transaction, the same row is read twice, but the result is different because another transaction changed the data.
 
 3. **Phantom Read (фантомные чтения)**
-  - В одной транзакции выполняется запрос по условию (например, `WHERE salary > 1000`).
-  - При повторном выполнении появляются новые строки (вставленные другой транзакцией).
+- In one transaction, a query is executed by condition (e.g., `WHERE salary > 1000`).
+- When executed again, new rows appear (inserted by another transaction).
 
 4. **Lost Update (потерянное обновление)**
-  - Две транзакции читают строку, меняют её и сохраняют.
-  - Обновление одной транзакции «перетирается» другой.
+- Two transactions read a row, change it, and save it.
+- One transaction's update is "overwritten" by another.
 
-### Уровни изоляции
+### Isolation levels
 
 1. **READ UNCOMMITTED**
-  - Минимальная изоляция.
-  - Разрешены *грязные чтения*.
-  - Быстро, но небезопасно.
-  - Применяется редко (например, для аналитики, где допустимы неточные данные).
+- Minimum isolation.
+- Allows *dirty reads*.
+- Fast, but unsafe.
+- Rarely used (e.g., for analytics where inaccurate data is acceptable).
 
-2. **READ COMMITTED** (по умолчанию в PostgreSQL, Oracle, MS SQL)
-  - Запрещает *грязные чтения*.
-  - Но допускает *неповторяемые чтения* и *фантомы*.
-  - Баланс между производительностью и безопасностью.
+2. **READ COMMITTED** (default in PostgreSQL, Oracle, MS SQL)
+- Prohibits *dirty reads*.
+- But allows *non-repeatable reads* and *phantoms*.
+- Balance between performance and safety.
 
-3. **REPEATABLE READ** (по умолчанию в MySQL InnoDB)
-  - Гарантирует, что при повторном чтении строк результат будет одинаковым.
-  - Исключает *грязные* и *неповторяемые чтения*.
-  - Но фантомы могут появляться (в PostgreSQL решаются через MVCC и фактически фантомов нет).
+3. **REPEATABLE READ** (default in MySQL InnoDB)
+- Guarantees that when re-reading rows, the result will be the same.
+- Excludes *dirty* and *non-repeatable reads*.
+- But phantoms may appear (in PostgreSQL solved through MVCC and actually no phantoms).
 
 4. **SERIALIZABLE**
-  - Максимальная изоляция.
-  - Эмулирует последовательное выполнение транзакций.
-  - Исключает все аномалии (грязные, неповторяемые, фантомы).
-  - Но очень дорогой по производительности (много блокировок или проверки конфликтов).
+- Maximum isolation.
+- Emulates sequential transaction execution.
+- Excludes all anomalies (dirty, non-repeatable, phantoms).
+- But very expensive in terms of performance (many locks or conflict checks).
 
-### Сравнение уровней изоляции
+### Comparison of isolation levels
 
-| Уровень           | Dirty Read | Non-Repeatable Read | Phantom Read | Производительность |
+| Level           | Dirty Read | Non-Repeatable Read | Phantom Read | Performance |
 |-------------------|------------|---------------------|--------------|--------------------|
-| READ UNCOMMITTED  | ✔          | ✔                   | ✔            | Очень высокая      |
-| READ COMMITTED    | ✘          | ✔                   | ✔            | Высокая            |
-| REPEATABLE READ   | ✘          | ✘                   | ✔*           | Средняя            |
-| SERIALIZABLE      | ✘          | ✘                   | ✘            | Низкая             |
+| READ UNCOMMITTED  | ✔          | ✔                   | ✔            | Very high      |
+| READ COMMITTED    | ✘          | ✔                   | ✔            | High            |
+| REPEATABLE READ   | ✘          | ✘                   | ✔*           | Medium            |
+| SERIALIZABLE      | ✘          | ✘                   | ✘            | Low             |
 
-\* В PostgreSQL при `REPEATABLE READ` фантомов нет из-за механизма MVCC.
+\* In PostgreSQL with `REPEATABLE READ`, there are no phantoms due to MVCC mechanism.
 
-### Плюсы и минусы
+### Pros and cons
 
 - **READ UNCOMMITTED**
-  - ✅ Быстрее всего
-  - ❌ Грязные данные, риск ошибок
+  - ✅ Fastest
+  - ❌ Dirty data, risk of errors
 
 - **READ COMMITTED**
-  - ✅ Хороший баланс для OLTP
-  - ❌ Возможны неповторяемые чтения, фантомы
+  - ✅ Good balance for OLTP
+  - ❌ Possible non-repeatable reads, phantoms
 
 - **REPEATABLE READ**
-  - ✅ Подходит для отчётности и аналитики
-  - ❌ Может блокировать больше строк, чем нужно
+  - ✅ Suitable for reporting and analytics
+  - ❌ May lock more rows than needed
 
 - **SERIALIZABLE**
-  - ✅ Максимальная корректность
-  - ❌ Сильное падение параллельности, блокировки/конфликты
+  - ✅ Maximum correctness
+  - ❌ Strong drop in concurrency, locks/conflicts
 
-### 6. Итог
-- Уровни изоляции нужны для выбора компромисса между **целостностью данных** и **производительностью**.
-- Чем выше уровень — тем больше защита от аномалий, но тем ниже конкурентность транзакций.
-- На практике:
-  - `READ COMMITTED` — стандарт для OLTP-систем.
-  - `REPEATABLE READ` — хорош для аналитики.
-  - `SERIALIZABLE` — редко, когда нужна абсолютная корректность.
+### Summary
+- Isolation levels are needed to choose a compromise between **data integrity** and **performance**.
+- The higher the level — the more protection from anomalies, but the lower transaction concurrency.
+- In practice:
+  - `READ COMMITTED` — standard for OLTP systems.
+  - `REPEATABLE READ` — good for analytics.
+  - `SERIALIZABLE` — rarely, when absolute correctness is needed.
 
-## 18. Объясните логическую архитектуру PostgreSQL
+## 18. Explain the logical architecture of PostgreSQL
 
-Логическая архитектура PostgreSQL определяет, как данные организованы и как к ним осуществляется доступ на концептуальном уровне.
+The logical architecture of PostgreSQL defines how data is organized and accessed at the conceptual level.
 
-**Основные компоненты:**
-1. **Cluster** — коллекция баз данных, управляемых одним экземпляром PostgreSQL.
-2. **Database** — изолированный контейнер для схем, таблиц и ролей.
-3. **Schema** — пространство имён, которое группирует объекты базы данных и предотвращает конфликты имён.
-4. **Table** — основная структура хранения данных в строках и столбцах.
-5. **Index** — ускоряет выполнение запросов за счёт быстрого поиска.
-6. **View** — логическое представление результата запроса (может быть обычным или материализованным).
-7. **Role/User** — управляют доступом и правами пользователей.
+**Main components:**
+1. **Cluster** — collection of databases managed by one PostgreSQL instance.
+2. **Database** — isolated container for schemas, tables, and roles.
+3. **Schema** — namespace that groups database objects and prevents name conflicts.
+4. **Table** — main data storage structure in rows and columns.
+5. **Index** — speeds up query execution through fast search.
+6. **View** — logical representation of query result (can be regular or materialized).
+7. **Role/User** — manage user access and permissions.
 
-**Как работает выполнение запроса:**
-- PostgreSQL проверяет права доступа.
-- Разбирает (парсит) запрос.
-- Генерирует план выполнения.
-- Извлекает данные из соответствующих логических объектов (таблиц, представлений и индексов) без прямого доступа к физическим файлам.  
+**How query execution works:**
+- PostgreSQL checks access permissions.
+- Parses the query.
+- Generates execution plan.
+- Extracts data from appropriate logical objects (tables, views, and indexes) without direct access to physical files.
 
 ![DB LOGICAL SCHEMA](../images/db-logical-schema.png)
 
-## 19. Опиши физическую структуру PostgreSQL
+## 19. Describe the physical structure of PostgreSQL
 
-Физическая архитектура PostgreSQL описывает, как база данных организована на уровне файловой системы и как фоновые процессы управляют хранением, извлечением и восстановлением данных. Она состоит из **файлов данных, конфигурационных файлов, фоновых процессов, структур памяти и механизмов журналирования транзакций**.
+The physical architecture of PostgreSQL describes how the database is organized at the file system level and how background processes manage data storage, retrieval, and recovery. It consists of **data files, configuration files, background processes, memory structures, and transaction logging mechanisms**.
 
-### Структура файловой системы
-1. **Data Directory (PGDATA)** — корневая папка, содержащая все файлы базы данных.
-2. **base/** — хранит подкаталоги для каждой базы данных в кластере с отдельными файлами для таблиц и индексов.
-3. **global/** — хранит данные уровня кластера (например, роли и определения табличных пространств).
-4. **pg_wal/** — содержит WAL-сегменты (Write-Ahead Log), фиксирующие все изменения до их применения к файлам данных.
-5. **pg_tblspc/** — символьные ссылки на табличные пространства, созданные пользователем вне директории по умолчанию.
-6. **pg_stat/** и **pg_stat_tmp/** — хранят собранную статистику, используемую планировщиком запросов.
+### File system structure
+1. **Data Directory (PGDATA)** — root folder containing all database files.
+2. **base/** — stores subdirectories for each database in the cluster with separate files for tables and indexes.
+3. **global/** — stores cluster-level data (e.g., roles and tablespace definitions).
+4. **pg_wal/** — contains WAL segments (Write-Ahead Log) that record all changes before applying them to data files.
+5. **pg_tblspc/** — symbolic links to user-created tablespaces outside the default directory.
+6. **pg_stat/** and **pg_stat_tmp/** — store collected statistics used by the query planner.
 
-### Фоновые процессы
-PostgreSQL использует модель *process-per-connection* (процесс на подключение). Основные фоновые процессы:
+### Background processes
+PostgreSQL uses a *process-per-connection* model. Main background processes:
 
-- **Postmaster** — главный управляющий процесс, запускает и управляет остальными процессами сервера.
-- **Backend Process** — выполняет SQL-запросы для конкретного клиента.
-- **WAL Writer** — записывает изменения транзакций в WAL для обеспечения надёжности.
-- **Background Writer** — сбрасывает изменённые ("грязные") страницы из буфера в диск.
-- **Checkpointer** — периодически сбрасывает все страницы на диск, создавая согласованную точку восстановления (checkpoint).
-- **Autovacuum Launcher & Workers** — удаляют "мертвые" записи и поддерживают производительность.
-- **Archiver** — переносит завершённые WAL-сегменты в архив (для high-availability и резервного копирования).
+- **Postmaster** — main management process, starts and manages other server processes.
+- **Backend Process** — executes SQL queries for a specific client.
+- **WAL Writer** — writes transaction changes to WAL for reliability.
+- **Background Writer** — flushes modified ("dirty") pages from buffer to disk.
+- **Checkpointer** — periodically flushes all pages to disk, creating a consistent recovery point (checkpoint).
+- **Autovacuum Launcher & Workers** — remove "dead" records and maintain performance.
+- **Archiver** — moves completed WAL segments to archive (for high-availability and backup).
 
 ### Write-Ahead Logging (WAL)
-1. Все изменения сначала записываются в WAL, а затем в файлы данных.
-2. Обеспечивает **надёжность (durability)** и возможность восстановления после сбоев, а также репликацию.
-3. WAL используется для **point-in-time recovery** и **streaming replication**.
+1. All changes are first written to WAL, then to data files.
+2. Ensures **durability** and ability to recover after failures, as well as replication.
+3. WAL is used for **point-in-time recovery** and **streaming replication**.
 
-### Структуры памяти
-1. **Shared Buffers** — основной кэш таблиц и индексов, общий для всех подключений.
-2. **WAL Buffers** — временное хранилище для записей WAL перед их сбросом на диск.
-3. **Work Memory** — выделяется для выполнения операций запроса (сортировки, соединения и т.д.).
-4. **Maintenance Work Memory** — используется для служебных задач (vacuum, создание индексов).
+### Memory structures
+1. **Shared Buffers** — main cache for tables and indexes, shared across all connections.
+2. **WAL Buffers** — temporary storage for WAL records before flushing to disk.
+3. **Work Memory** — allocated for query operations (sorting, joins, etc.).
+4. **Maintenance Work Memory** — used for maintenance tasks (vacuum, index creation).
 
-### Поток данных (Data Flow)
-1. Клиент отправляет SQL-запрос.
-2. Backend-процесс парсит и планирует запрос.
-3. Запрос выполняется и данные читаются из Shared Buffers (или с диска, если не кэшированы).
-4. Обновления записываются в WAL.
-5. Background Writer и Checkpointer сбрасывают данные на диск.
+### Data flow
+1. Client sends SQL query.
+2. Backend process parses and plans the query.
+3. Query executes and data is read from Shared Buffers (or from disk if not cached).
+4. Updates are written to WAL.
+5. Background Writer and Checkpointer flush data to disk.
 
-## 20. Объясните MVCC в PostgreSQL
+## 20. Explain MVCC in PostgreSQL
 
-MVCC (Multi-Version Concurrency Control) — механизм, позволяющий нескольким транзакциям одновременно читать и изменять данные без взаимной блокировки, при этом сохраняя изоляцию транзакций.  
-Вместо блокировки строк для читателей PostgreSQL хранит несколько версий строки и использует "снимки транзакций" (snapshots) для определения видимости данных.
+MVCC (Multi-Version Concurrency Control) is a mechanism that allows multiple transactions to simultaneously read and modify data without mutual locking, while maintaining transaction isolation.  
+Instead of locking rows for readers, PostgreSQL stores multiple versions of a row and uses "transaction snapshots" to determine data visibility.
 
-### Как это работает:
-1. Каждая строка имеет два скрытых системных столбца:
-  - **xmin** — ID транзакции, создавшей строку.
-  - **xmax** — ID транзакции, удалившей или изменившей строку.
-2. При `UPDATE` PostgreSQL помечает старую версию строки значением `xmax` и вставляет новую строку с новым `xmin`.
-3. При `SELECT` база данных возвращает только те версии строк, которые видимы в снимке текущей транзакции.
-4. Старые версии становятся «мертвыми кортежами» (dead tuples) и удаляются с помощью `VACUUM` или `Autovacuum`.
+### How it works:
+1. Each row has two hidden system columns:
+- **xmin** — ID of transaction that created the row.
+- **xmax** — ID of transaction that deleted or modified the row.
+2. On `UPDATE`, PostgreSQL marks the old row version with `xmax` value and inserts a new row with new `xmin`.
+3. On `SELECT`, the database returns only row versions visible in the current transaction snapshot.
+4. Old versions become "dead tuples" and are removed by `VACUUM` or `Autovacuum`.
 
-### Преимущества:
-1. Читатели не блокируют писателей и наоборот.
-2. Улучшается параллельность и производительность в системах с высокой нагрузкой.
-3. Бесшовная работа с WAL для обеспечения восстановления после сбоев.
+### Advantages:
+1. Readers don't block writers and vice versa.
+2. Improved concurrency and performance in high-load systems.
+3. Seamless work with WAL for ensuring recovery after failures.
 
-### Недостатки:
-1. Требуется регулярный `VACUUM` для освобождения пространства.
-2. Может возникать «разбухание таблиц» (table bloat), если обновлений много, а очистка задерживается.
+### Disadvantages:
+1. Regular `VACUUM` is required to free space.
+2. "Table bloat" may occur if there are many updates but cleanup is delayed.
 
-## 21. Что такое масштабирование на примере PostgreSQL?
+## 21. What is scaling using PostgreSQL as an example?
 
-Масштабирование — процесс увеличения производительности и пропускной способности PostgreSQL, чтобы обрабатывать больше данных или больше одновременных запросов.
+Scaling is the process of increasing PostgreSQL performance and throughput to handle more data or more concurrent queries.
 
-### Основные подходы:
-1. **Vertical Scaling (масштабирование «вверх»)**
-  - Увеличение ресурсов одного сервера: CPU, RAM, диски.
-  - Простой путь: обновить «железо» или параметры конфигурации PostgreSQL.
-  - Пример: увеличить `shared_buffers`, перейти на более мощный сервер.
+### Main approaches:
+1. **Vertical Scaling (scaling "up")**
+- Increasing resources of one server: CPU, RAM, disks.
+- Simple path: upgrade "hardware" or PostgreSQL configuration parameters.
+- Example: increase `shared_buffers`, move to more powerful server.
 
-   **Плюсы:**
-  - Легко реализовать.
-  - Не требует изменения архитектуры приложения.
+**Pros:**
+- Easy to implement.
+- Doesn't require changing application architecture.
 
-   **Минусы:**
-  - Есть физический предел (дорого и не бесконечно).
-  - Один сервер остаётся «узким горлышком».
+**Cons:**
+- There's a physical limit (expensive and not infinite).
+- One server remains a "bottleneck".
 
-2. **Horizontal Scaling (масштабирование «вширь»)**
-  - Добавление нескольких серверов для распределения нагрузки.
-  - В PostgreSQL реализуется через:
-    1. **Read Replicas (Streaming Replication)** — реплики для чтения.
-    2. **Logical Replication** — репликация на уровне таблиц/записей, можно частично синхронизировать данные.
-    3. **Sharding** — разделение данных по серверам (нет встроенной поддержки; используют Citus, Yugabyte и др.).
-    4. **Pgpool-II / PgBouncer** — балансировка нагрузки между серверами.
+2. **Horizontal Scaling (scaling "out")**
+- Adding multiple servers to distribute load.
+- In PostgreSQL implemented through:
+  1. **Read Replicas (Streaming Replication)** — replicas for reading.
+  2. **Logical Replication** — replication at table/record level, can partially synchronize data.
+  3. **Sharding** — splitting data across servers (no built-in support; use Citus, Yugabyte, etc.).
+  4. **Pgpool-II / PgBouncer** — load balancing between servers.
 
-   **Плюсы:**
-  - Нет жёсткого ограничения по мощности.
-  - Можно масштабировать чтение и частично запись.
+**Pros:**
+- No hard limit on power.
+- Can scale reading and partially writing.
 
-   **Минусы:**
-  - Более сложная настройка и поддержка.
-  - Консистентность данных сложнее обеспечить.
+**Cons:**
+- More complex setup and maintenance.
+- Data consistency is harder to ensure.
 
-### Часто используемые подходы в продакшене:
-1. Для **OLTP-систем**: вертикальное масштабирование и read replicas.
-2. Для **OLAP-систем**: шардирование, распределённые базы (например, Citus, Greenplum).  
+### Commonly used approaches in production:
+1. For **OLTP systems**: vertical scaling and read replicas.
+2. For **OLAP systems**: sharding, distributed databases (e.g., Citus, Greenplum).
 
-## 22. Что такое шардирование?
+## 22. What is sharding?
 
-Шардирование — метод **горизонтального масштабирования**, при котором база данных делится на несколько частей (**шардов**). Каждый шард хранится на отдельном сервере или экземпляре PostgreSQL.
+Sharding is a **horizontal scaling** method where the database is divided into several parts (**shards**). Each shard is stored on a separate server or PostgreSQL instance.
 
-### Как работает:
-1. Данные распределяются по шардам по ключу шардирования (например, `customer_id`, `region`, диапазон дат).
-2. Каждый шард — это полноценная база PostgreSQL, содержащая только часть данных.
-3. Логика маршрутизации запросов (какой шард использовать) находится:
-  - в приложении,
-  - в промежуточном ПО (middleware),
-  - или в расширении PostgreSQL (например, **Citus**).
+### How it works:
+1. Data is distributed across shards by sharding key (e.g., `customer_id`, `region`, date range).
+2. Each shard is a full PostgreSQL database containing only part of the data.
+3. Query routing logic (which shard to use) is located:
+- in the application,
+- in middleware,
+- or in PostgreSQL extension (e.g., **Citus**).
 
-### Типы шардирования:
-1. **Range sharding** — разделение по диапазонам значений.
-2. **Hash sharding** — распределение по хэш-функции:
-  - обеспечивает равномерное распределение данных по шардам;
-  - предотвращает «горячие узлы» (например, для ключей `user_id`).
-  - Общая схема:
-    1. Выбираем ключ шардирования (`user_id`, `order_id`, `region_id`).
-    2. Считаем хэш (например, MD5, SHA-1).
-    3. Преобразуем hex-строку хэша в число.
-    4. Берём остаток от деления на количество шардов (`% N`).
-    5. Получаем номер шарда.
-3. **Directory-based sharding** — отдельная таблица-словарь хранит соответствие ключа и шарда.
+### Types of sharding:
+1. **Range sharding** — splitting by value ranges.
+2. **Hash sharding** — distribution by hash function:
+- ensures even data distribution across shards;
+- prevents "hot nodes" (e.g., for `user_id` keys).
+- General scheme:
+  1. Choose sharding key (`user_id`, `order_id`, `region_id`).
+  2. Calculate hash (e.g., MD5, SHA-1).
+  3. Convert hex hash string to number.
+  4. Take remainder when divided by number of shards (`% N`).
+  5. Get shard number.
+3. **Directory-based sharding** — separate dictionary table stores key-to-shard mapping.
 
-### Плюсы:
-1. Почти неограниченный рост данных.
-2. Возможность параллельной обработки запросов на разных шардах.
-3. Распределение нагрузки.
+### Pros:
+1. Almost unlimited data growth.
+2. Ability to process queries in parallel on different shards.
+3. Load distribution.
 
-### Минусы:
-1. Сложные запросы, охватывающие несколько шардов.
-2. Сложности в транзакциях между шардами.
-3. Более сложная инфраструктура и поддержка.  
+### Cons:
+1. Complex queries spanning multiple shards.
+2. Difficulties in transactions between shards.
+3. More complex infrastructure and maintenance.
 
-## 23. Что такое репликация?
+## 23. What is replication?
 
-Репликация — это процесс **копирования данных** с основного сервера (**primary**) на один или несколько резервных серверов (**standby**) для повышения доступности, производительности и отказоустойчивости.
+Replication is the process of **copying data** from the main server (**primary**) to one or more backup servers (**standby**) to improve availability, performance, and fault tolerance.
 
-### Потоковая репликация (Streaming Replication)
-- Использует **WAL (Write-Ahead Log)** для передачи изменений в реальном времени.
-- Бывает:
-  1. **Асинхронная** — primary не ждёт ответа standby.
-    - Плюс: быстрее.
-    - Минус: возможна небольшая потеря данных при сбое.
-  2. **Синхронная** — primary ждёт подтверждения standby.
-    - Плюс: нет потери данных.
-    - Минус: выше задержка.
+### Streaming Replication
+- Uses **WAL (Write-Ahead Log)** to transmit changes in real time.
+- Can be:
+  1. **Asynchronous** — primary doesn't wait for standby response.
+  - Plus: faster.
+  - Minus: possible small data loss on failure.
+  2. **Synchronous** — primary waits for standby confirmation.
+  - Plus: no data loss.
+  - Minus: higher latency.
 
-### Логическая репликация (Logical Replication)
-1. Передаёт изменения на уровне строк и таблиц.
-2. Можно реплицировать только **определённые таблицы**.
-3. Подходит для интеграции с другими системами или частичного копирования данных.
+### Logical Replication
+1. Transmits changes at row and table level.
+2. Can replicate only **specific tables**.
+3. Suitable for integration with other systems or partial data copying.
 
-### Каскадная репликация (Cascading Replication)
-- Реплика может сама быть источником данных для других реплик.
+### Cascading Replication
+- A replica can itself be a data source for other replicas.
 
-### Плюсы:
-1. Высокая доступность.
-2. Масштабирование чтения (запросы можно переносить на реплики).
-3. Резервное копирование в реальном времени.
+### Pros:
+1. High availability.
+2. Read scaling (queries can be moved to replicas).
+3. Real-time backup.
 
-### Минусы:
-1. Нет масштабирования записи (реплики — только для чтения).
-2. В синхронной репликации — выше задержки.
-3. В асинхронной репликации — риск потери последних транзакций.
+### Cons:
+1. No write scaling (replicas are read-only).
+2. In synchronous replication — higher latencies.
+3. In asynchronous replication — risk of losing latest transactions.
 
-## 24. Что такое партиционирование в SQL?
+## 24. What is partitioning in SQL?
 
-Партиционирование — это разбиение одной большой таблицы на более мелкие **партиции** в рамках **одной базы данных и одного сервера**.  
-Для пользователя это выглядит как одна логическая таблица, но физически — это набор отдельных таблиц.
+Partitioning is splitting one large table into smaller **partitions** within **one database and one server**.  
+To the user, it looks like one logical table, but physically — it's a set of separate tables.
 
-### Типы партиционирования в PostgreSQL:
-1. **Range** — разделение по диапазонам значений (например, по датам).
-2. **List** — разделение по спискам значений (например, по регионам).
-3. **Hash** — распределение по хэш-функции.
+### Types of partitioning in PostgreSQL:
+1. **Range** — splitting by value ranges (e.g., by dates).
+2. **List** — splitting by value lists (e.g., by regions).
+3. **Hash** — distribution by hash function.
 
-### Плюсы:
-1. Повышение производительности за счёт **partition pruning** (читается только нужная партиция).
-2. Удобство обслуживания (можно удалять или архивировать старые партиции).
-3. Подходит для работы с большими таблицами и временными рядами.
+### Pros:
+1. Performance improvement through **partition pruning** (only needed partition is read).
+2. Convenience of maintenance (can delete or archive old partitions).
+3. Suitable for working with large tables and time series.
 
-### Минусы:
-1. Все партиции хранятся на **одном сервере** → масштабирование ограничено его ресурсами.
-2. Настройка и поддержка могут быть сложнее, чем у обычных таблиц.
+### Cons:
+1. All partitions are stored on **one server** → scaling limited by its resources.
+2. Setup and maintenance can be more complex than regular tables.
 
-### Ключевое отличие от других подходов:
-1. **Шардирование** — масштабирование «вширь» (данные на разных серверах).
-2. **Партиционирование** — оптимизация внутри одного сервера.
-3. **Репликация** — дублирование данных для отказоустойчивости и масштабирования чтения.  
+### Key difference from other approaches:
+1. **Sharding** — horizontal scaling (data on different servers).
+2. **Partitioning** — optimization within one server.
+3. **Replication** — data duplication for fault tolerance and read scaling.
 
-## 25. Что такое триггер?
+## 25. What is a trigger?
 
-Триггер — это объект базы данных, который автоматически выполняет заданный блок кода (обычно на языке PL/pgSQL) **при наступлении определённого события** в таблице или представлении.  
-Он «срабатывает» без явного вызова из приложения — при вставке, обновлении, удалении или других событиях.
+A trigger is a database object that automatically executes a specified code block (usually in PL/pgSQL language) **when a certain event occurs** in a table or view.  
+It "fires" without explicit call from the application — on insert, update, delete, or other events.
 
-### Виды триггеров по моменту выполнения:
-1. **BEFORE** — до выполнения операции (можно изменить данные или отменить действие).
-2. **AFTER** — после выполнения операции (можно записать в журнал, обновить другие таблицы).
-3. **INSTEAD OF** — используется для представлений, заменяя операцию на свою.
+### Types of triggers by execution moment:
+1. **BEFORE** — before operation execution (can modify data or cancel action).
+2. **AFTER** — after operation execution (can log, update other tables).
+3. **INSTEAD OF** — used for views, replacing operation with its own.
 
-### Типы событий для триггеров:
-- **INSERT** — вставка строки.
-- **UPDATE** — изменение строки.
-- **DELETE** — удаление строки.
-- **TRUNCATE** — очистка таблицы.
+### Event types for triggers:
+- **INSERT** — row insertion.
+- **UPDATE** — row modification.
+- **DELETE** — row deletion.
+- **TRUNCATE** — table cleanup.
 
-### Пример в PostgreSQL
+### Example in PostgreSQL
 ```sql
-– Функция, которую будет вызывать триггер
+-- Function that will be called by trigger
 CREATE OR REPLACE FUNCTION log_update()
 RETURNS trigger AS $$
 BEGIN
@@ -1273,205 +1272,205 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-– Создаём триггер
+-- Create trigger
 CREATE TRIGGER trg_log_update
 AFTER UPDATE ON employees
 FOR EACH ROW
 EXECUTE FUNCTION log_update();
 ```
 
-В этом примере:
-- **TG_TABLE_NAME** — системная переменная с именем таблицы.
-- **TG_OP** — тип операции (INSERT, UPDATE, DELETE).
+In this example:
+- **TG_TABLE_NAME** — system variable with table name.
+- **TG_OP** — operation type (INSERT, UPDATE, DELETE).
 
-### Плюсы триггеров:
-1. Автоматизация задач (логирование, валидация, каскадные изменения).
-2. Централизация логики на уровне БД.
-3. Гарантия, что правило выполнится независимо от приложения.
+### Pros of triggers:
+1. Task automation (logging, validation, cascading changes).
+2. Centralizing logic at DB level.
+3. Guarantee that rule will execute regardless of application.
 
-### Минусы триггеров:
-1. Скрытая логика (труднее отлаживать).
-2. Может замедлять операции при сложной логике.
-3. Риск рекурсивного вызова триггеров.  
+### Cons of triggers:
+1. Hidden logic (harder to debug).
+2. May slow down operations with complex logic.
+3. Risk of recursive trigger calls.
 
-## 26. В чем разница между триггером и процедурой/функцией?
+## 26. What is the difference between a trigger and a procedure/function?
 
-### Функция или процедура
-- **Функция (FUNCTION)** — объект, который выполняет код и возвращает значение.
-  - Может использоваться в запросах, выражениях, других функциях.
-  - В PostgreSQL может возвращать простое значение или таблицу (`RETURNS TABLE`).
-  - Вызывается явно:
+### Function or procedure
+- **Function (FUNCTION)** — object that executes code and returns a value.
+  - Can be used in queries, expressions, other functions.
+  - In PostgreSQL can return simple value or table (`RETURNS TABLE`).
+  - Called explicitly:
     ```
     SELECT my_function(123);
     ```
-- **Процедура (PROCEDURE)** — появилась в PostgreSQL 11.
-  - Не обязана возвращать значение.
-  - Может выполнять транзакционные команды (`COMMIT`, `ROLLBACK`).
-  - Вызывается командой:
+- **Procedure (PROCEDURE)** — appeared in PostgreSQL 11.
+  - Not required to return a value.
+  - Can execute transactional commands (`COMMIT`, `ROLLBACK`).
+  - Called with command:
     ```
     CALL my_procedure(123);
     ```
 
-### Триггер
-  **Триггер (TRIGGER)** — объект, который **не вызывается явно**, а выполняется **автоматически** при наступлении определённого события (`INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`).
-  Сам триггер кода не содержит, а **ссылается на функцию**, которая выполняется при срабатывании.
-  В PostgreSQL триггерная функция должна возвращать `NEW` или `OLD` (для BEFORE-триггеров), либо `NULL` (если операция должна быть отменена).
+### Trigger
+**Trigger (TRIGGER)** — object that **is not called explicitly**, but executes **automatically** when a certain event occurs (`INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`).
+The trigger itself doesn't contain code, but **references a function** that executes when triggered.
+In PostgreSQL, trigger function must return `NEW` or `OLD` (for BEFORE triggers), or `NULL` (if operation should be cancelled).
 
 
-### Ключевые отличия
+### Key differences
 
-| Характеристика     | Функция / Процедура                           | Триггер                                       |
+| Characteristic     | Function / Procedure                           | Trigger                                       |
 |--------------------|-----------------------------------------------|-----------------------------------------------|
-| **Как вызывается** | Явно (`SELECT` или `CALL`)                   | Автоматически при событии                     |
-| **Возврат значения** | Функция — да, процедура — нет               | Зависит от типа (`NEW` / `OLD`)               |
-| **Привязка**       | Не привязаны к таблице                       | Привязаны к конкретной таблице или `VIEW`     |
-| **Использование**  | Вычисления, бизнес-логика, операции с данными | Логирование, валидация, каскадные изменения   |
-| **Видимость логики** | Очевидна в коде приложения                  | Может быть скрыта внутри БД                   |
+| **How called** | Explicitly (`SELECT` or `CALL`)                   | Automatically on event                     |
+| **Return value** | Function — yes, procedure — no               | Depends on type (`NEW` / `OLD`)               |
+| **Binding**       | Not bound to table                       | Bound to specific table or `VIEW`     |
+| **Usage**  | Calculations, business logic, data operations | Logging, validation, cascading changes   |
+| **Logic visibility** | Obvious in application code                  | May be hidden inside DB                   |
 
-## 27. Что такое представления (views) и каковы их преимущества? Как они могут использоваться в контексте OLAP-систем?
+## 27. What are views and what are their advantages? How can they be used in the context of OLAP systems?
 
-**View** в SQL — это виртуальная таблица, основанная на результате заранее определённого запроса.
-  Данные в view не хранятся (кроме **материализованных представлений**, где данные сохраняются).
-  Представления могут объединять таблицы, фильтровать строки и выдавать агрегированные результаты.
+**View** in SQL is a virtual table based on the result of a predefined query.
+Data in view is not stored (except **materialized views**, where data is saved).
+Views can combine tables, filter rows, and output aggregated results.
 
-### Преимущества представлений
-1. **Simplification** — упрощают работу, скрывая сложные запросы за одним объектом.
-2. **Security** — можно выдавать доступ только к нужным колонкам/строкам без раскрытия всей таблицы.
-3. **Reusability** — бизнес-логику можно переиспользовать в разных приложениях.
-4. **Abstraction** — скрывают приложения от изменений в схеме базы данных.
-5. **Aggregation** — позволяют создавать заранее агрегированные результаты для аналитики.
+### Advantages of views
+1. **Simplification** — simplify work by hiding complex queries behind one object.
+2. **Security** — can grant access only to needed columns/rows without revealing entire table.
+3. **Reusability** — business logic can be reused in different applications.
+4. **Abstraction** — hide applications from database schema changes.
+5. **Aggregation** — allow creating pre-aggregated results for analytics.
 
-### Использование в OLAP-системах
-1. Представление агрегированных показателей (например, продажи по регионам и месяцам).
-2. Работа в качестве **семантического слоя** между хранилищем данных и BI-инструментами.
-3. Использование **материализованных представлений** для хранения предагрегированных данных и ускорения отчётов.
-4. Упрощение многомерных запросов (инкапсуляция сложных `JOIN` и фильтров).
+### Usage in OLAP systems
+1. Presenting aggregated metrics (e.g., sales by regions and months).
+2. Working as **semantic layer** between data warehouse and BI tools.
+3. Using **materialized views** to store pre-aggregated data and speed up reports.
+4. Simplifying multidimensional queries (encapsulating complex `JOIN` and filters).
 
-### Пример
+### Example
 ```sql
   CREATE VIEW sales_summary AS
-  SELECT region, date_trunc(‘month’, sale_date) AS month, SUM(amount) AS total_sales
+  SELECT region, date_trunc('month', sale_date) AS month, SUM(amount) AS total_sales
   FROM sales
-  GROUP BY region, date_trunc(‘month’, sale_date);
+  GROUP BY region, date_trunc('month', sale_date);
 ```
-> Такое представление можно напрямую использовать в BI-инструменте для получения ежемесячных сводных данных без повторного пересчёта агрегатов.  
+> Such view can be directly used in BI tool to get monthly summary data without recalculating aggregates.
 
-## 28. Что такое эскалация блокировок (lock escalation)?
+## 28. What is lock escalation?
 
-Эскалация блокировок — это процесс, при котором СУБД автоматически заменяет множество мелких блокировок на одну более крупную.
+Lock escalation is the process where the DBMS automatically replaces many small locks with one larger lock.
 
-### Зачем это делается:
-1. Чтобы сократить ресурсы, затрачиваемые на управление блокировками.
-2. Чтобы избежать превышения лимита на количество блокировок.
+### Why this is done:
+1. To reduce resources spent on lock management.
+2. To avoid exceeding the limit on number of locks.
 
-### Как это работает:
-- Если транзакция блокирует слишком много строк или страниц, СУБД может «повысить» уровень блокировки:
-  - вместо множества **row-level locks** (уровень строк) → одна **table-level lock** (уровень таблицы).
+### How it works:
+- If a transaction locks too many rows or pages, the DBMS can "escalate" the lock level:
+  - instead of many **row-level locks** → one **table-level lock**.
 
-**Результат:**
-1. СУБД управляет меньшим количеством блокировок → меньше затрат памяти и CPU.
-2. Но снижается параллелизм — другие транзакции не смогут работать с таблицей.
+**Result:**
+1. DBMS manages fewer locks → less memory and CPU costs.
+2. But concurrency decreases — other transactions can't work with the table.
 
-### Эскалация блокировок в PostgreSQL
-- В PostgreSQL **автоматической** эскалации блокировок **нет** (в отличие от, например, MS SQL Server).
-- Однако аналогичный эффект может возникнуть, если вручную взять блокировку более высокого уровня:
+### Lock escalation in PostgreSQL
+- In PostgreSQL there is **no automatic** lock escalation (unlike, e.g., MS SQL Server).
+- However, similar effect can occur if manually taking higher-level lock:
 ```sql
     LOCK TABLE employees IN EXCLUSIVE MODE;
 ```
-- Также при долгих транзакциях с множеством обновлений может возникнуть конкуренция за доступ → другие сессии будут ждать.
+- Also, with long transactions with many updates, competition for access may arise → other sessions will wait.
 
-### В других СУБД
-1. **SQL Server** — lock escalation может происходить с уровня row/page до table.
-2. **Oracle** — более гибкая стратегия, эскалация не всегда автоматическая.
-3. Основная причина — оптимизация использования памяти в lock manager.
+### In other DBMSs
+1. **SQL Server** — lock escalation can occur from row/page level to table.
+2. **Oracle** — more flexible strategy, escalation not always automatic.
+3. Main reason — optimizing memory usage in lock manager.
 
-### Плюсы:
-1. Меньше накладных расходов на управление блокировками.
-2. Снижение нагрузки на lock manager.
+### Pros:
+1. Less overhead on lock management.
+2. Reduced load on lock manager.
 
-### Минусы:
-1. Резкое падение параллелизма.
-2. Риск блокировки всей таблицы из-за одной транзакции.
+### Cons:
+1. Sharp drop in concurrency.
+2. Risk of entire table being locked due to one transaction.
 
-## 29. Что такое ограничения (constraints) в SQL?
+## 29. What are constraints in SQL?
 
-Constraint — это правило на уровне базы данных, которое **ограничивает допустимые значения в колонках или таблицах**, чтобы гарантировать целостность и корректность данных.
+Constraint is a database-level rule that **limits acceptable values in columns or tables** to guarantee data integrity and correctness.
 
-### Основные типы ограничений в SQL:
+### Main types of constraints in SQL:
 1. **PRIMARY KEY**
-  - Уникально идентифицирует каждую строку.
-  - Не допускает `NULL`.
-  - Может быть составным (несколько колонок).
+- Uniquely identifies each row.
+- Doesn't allow `NULL`.
+- Can be composite (multiple columns).
 
 2. **FOREIGN KEY**
-  - Ссылается на ключ в другой таблице.
-  - Обеспечивает ссылочную целостность (referential integrity).
-  - Можно задать действия при удалении/обновлении:
-    - `ON DELETE CASCADE`
-    - `SET NULL`
-    - `RESTRICT`
+- References key in another table.
+- Ensures referential integrity.
+- Can specify actions on delete/update:
+  - `ON DELETE CASCADE`
+  - `SET NULL`
+  - `RESTRICT`
 
 3. **UNIQUE**
-  - Гарантирует уникальность значений в колонке (или наборе колонок).
-  - Может содержать `NULL` (в зависимости от СУБД).
+- Guarantees uniqueness of values in column (or set of columns).
+- Can contain `NULL` (depending on DBMS).
 
 4. **NOT NULL**
-  - Запрещает хранить `NULL` в колонке.
+- Prohibits storing `NULL` in column.
 
 5. **CHECK**
-  - Позволяет задать произвольное условие.  
+- Allows setting arbitrary condition.
 ```sql
     CHECK (salary > 0)
 ```
-6. **EXCLUDE** (специфично для PostgreSQL)
-- Запрещает одновременное выполнение определённого условия для разных строк.
-- Полезно для геоданных и временных интервалов.
+6. **EXCLUDE** (specific to PostgreSQL)
+- Prohibits simultaneous execution of certain condition for different rows.
+- Useful for geo data and time intervals.
 
-### Преимущества использования constraints:
-1. Гарантия качества данных — даже при ошибках в приложении.
-2. Целостность данных на уровне БД.
-3. Упрощение логики — часть проверок переносится с кода приложения в базу.
+### Advantages of using constraints:
+1. Data quality guarantee — even with application errors.
+2. Data integrity at DB level.
+3. Logic simplification — some checks moved from application code to database.
 
-### Недостатки:
-1. Чрезмерное количество сложных ограничений может замедлять вставку и обновление данных.
-2. Не всегда гибко для сложной бизнес-логики (часть правил проще реализовать в приложении).  
+### Disadvantages:
+1. Excessive number of complex constraints can slow down data insertion and updates.
+2. Not always flexible for complex business logic (some rules easier to implement in application).
 
-## 30. Какие виды блокировок бывают?
+## 30. What types of locks exist?
 
-### Блокировки на уровне строк (Row-level locks)
-- **Назначение:** предотвращают одновременное изменение одной и той же строки несколькими транзакциями.
-- **Примеры команд:**
-  1. `SELECT ... FOR UPDATE` — блокирует выбранные строки для изменения.
-  2. `SELECT ... FOR SHARE` — блокирует строки для чтения с запретом изменения.
-- **Характеристики:**
-  - Позволяют параллельную работу с другими строками в таблице.
-  - Записи блокируются только в момент их выбора.
-- **Плюсы:** минимизация конфликта между транзакциями.
-- **Минусы:** при массовых блокировках возможна конкуренция за доступ  
-  (в PostgreSQL нет автоматической эскалации до table-level lock).
+### Row-level locks
+- **Purpose:** prevent simultaneous modification of same row by multiple transactions.
+- **Example commands:**
+  1. `SELECT ... FOR UPDATE` — locks selected rows for modification.
+  2. `SELECT ... FOR SHARE` — locks rows for reading with prohibition on modification.
+- **Characteristics:**
+  - Allow parallel work with other rows in table.
+  - Records are locked only when selected.
+- **Pros:** minimize conflict between transactions.
+- **Cons:** with mass locks, competition for access may arise  
+  (in PostgreSQL no automatic escalation to table-level lock).
 
-### Блокировки на уровне таблицы (Table-level locks)
-- **Назначение:** блокируют всю таблицу или накладывают ограничения на определённые действия.
-- **Примеры команд:**
-  1. `LOCK TABLE table_name IN ACCESS EXCLUSIVE MODE;` — полная блокировка для любых операций.
-  2. Автоматически применяются при DDL-операциях (`ALTER TABLE`, `DROP TABLE`).
-- **Режимы блокировок:**
-  - От `ACCESS SHARE` (минимальное ограничение, разрешено только читать).
-  - До `ACCESS EXCLUSIVE` (полный запрет на чтение/запись другими транзакциями).
-- **Плюсы:** упрощает контроль целостности при массовых операциях.
-- **Минусы:** может серьёзно снизить параллелизм.
+### Table-level locks
+- **Purpose:** lock entire table or impose restrictions on certain actions.
+- **Example commands:**
+  1. `LOCK TABLE table_name IN ACCESS EXCLUSIVE MODE;` — full lock for any operations.
+  2. Automatically applied during DDL operations (`ALTER TABLE`, `DROP TABLE`).
+- **Lock modes:**
+  - From `ACCESS SHARE` (minimal restriction, only reading allowed).
+  - To `ACCESS EXCLUSIVE` (full prohibition on reading/writing by other transactions).
+- **Pros:** simplifies integrity control during mass operations.
+- **Cons:** may seriously reduce concurrency.
 
-### Advisory Locks (советующие блокировки)
-- **Назначение:** блокировки, управляемые вручную из приложения, не автоматические в PostgreSQL.
-- **Особенности:**
-  1. Не связаны с конкретной строкой или таблицей.
-  2. Могут использоваться для синхронизации между процессами/приложениями.
-- **Примеры команд:**
-  1. `pg_advisory_lock(key)` — захват блокировки с заданным числовым ключом.
-  2. `pg_try_advisory_lock(key)` — попытка захватить блокировку без ожидания.
-  3. `pg_advisory_unlock(key)` — освобождение блокировки.
-- **Плюсы:** гибкий контроль за логикой блокировок, возможность строить собственные механизмы синхронизации.
-- **Минусы:** разработчик сам отвечает за захват и освобождение. 
+### Advisory Locks (advisory locks)
+- **Purpose:** locks managed manually from application, not automatic in PostgreSQL.
+- **Features:**
+  1. Not tied to specific row or table.
+  2. Can be used for synchronization between processes/applications.
+- **Example commands:**
+  1. `pg_advisory_lock(key)` — acquire lock with given numeric key.
+  2. `pg_try_advisory_lock(key)` — attempt to acquire lock without waiting.
+  3. `pg_advisory_unlock(key)` — release lock.
+- **Pros:** flexible control over lock logic, ability to build custom synchronization mechanisms.
+- **Cons:** developer responsible for acquiring and releasing.
 
 ## 31. Что такое взаимная блокировка (deadlock)?
 
