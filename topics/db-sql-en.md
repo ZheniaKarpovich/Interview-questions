@@ -1472,87 +1472,87 @@ Constraint is a database-level rule that **limits acceptable values in columns o
 - **Pros:** flexible control over lock logic, ability to build custom synchronization mechanisms.
 - **Cons:** developer responsible for acquiring and releasing.
 
-## 31. Что такое взаимная блокировка (deadlock)?
+## 31. What is a deadlock?
 
-Deadlock возникает, когда два процесса ожидают друг друга, удерживая при этом блокировки, необходимые для продолжения работы.  
-Например:
-- Процесс 1 заблокировал строку A и ждёт строку B.
-- Процесс 2 заблокировал строку B и ждёт строку A → Оба процесса не могут продолжить выполнение.
+Deadlock occurs when two processes wait for each other while holding locks needed for the other to continue.  
+For example:
+- Process 1 locked row A and waits for row B.
+- Process 2 locked row B and waits for row A → Both processes cannot continue execution.
 
-В БД это часто происходит из-за неправильного порядка захвата блокировок или долгих транзакций.  
-Блокировки снимаются автоматически при выполнении `COMMIT`/`ROLLBACK` или если один из процессов завершён принудительно.
+In DB this often happens due to incorrect lock acquisition order or long transactions.  
+Locks are automatically released when `COMMIT`/`ROLLBACK` is executed or if one process is forcibly terminated.
 
-### Deadlock в PostgreSQL
-- PostgreSQL **сам обнаруживает** взаимные блокировки.
-- Чтобы предотвратить зависание:
-  1. Одна из транзакций **прерывается**.
-  2. Другая продолжает выполнение.
-  3. Сообщение *`deadlock detected`* появляется, если PostgreSQL находит циклическую зависимость.
+### Deadlock in PostgreSQL
+- PostgreSQL **automatically detects** mutual locks.
+- To prevent hanging:
+  1. One transaction is **interrupted**.
+  2. The other continues execution.
+  3. Message *`deadlock detected`* appears if PostgreSQL finds circular dependency.
 
-### Основные причины deadlock:
-1. Разный порядок доступа к ресурсам в транзакциях.
-2. Долгие транзакции, удерживающие блокировки слишком долго.
-3. Массовые обновления/удаления в нескольких таблицах без согласованного порядка.
+### Main causes of deadlock:
+1. Different order of resource access in transactions.
+2. Long transactions holding locks too long.
+3. Mass updates/deletions in multiple tables without consistent order.
 
-### Итог:
-Deadlock — это ошибка проектирования или управления транзакциями, и его нужно предотвращать с помощью:
-- согласованного порядка блокировок;
-- минимизации времени удержания блокировок;
-- разбиения долгих транзакций на более короткие.  
+### Summary:
+Deadlock is a design error or transaction management issue, and should be prevented by:
+- consistent lock order;
+- minimizing lock hold time;
+- breaking long transactions into shorter ones.
 
-## 32. Что такое роли (roles)?
+## 32. What are roles?
 
-Роли — это именованные группы привилегий, которые могут назначаться пользователям или другим ролям.
+Roles are named groups of privileges that can be assigned to users or other roles.
 
-### Основные возможности ролей:
-1. Управление доступом к объектам базы данных (таблицам, схемам, функциям).
-2. Централизация прав доступа: вместо назначения прав каждому пользователю отдельно, можно объединять их в роли.
-3. Возможность создания иерархий: роль может содержать другие роли.
+### Main capabilities of roles:
+1. Managing access to database objects (tables, schemas, functions).
+2. Centralizing access rights: instead of assigning rights to each user separately, they can be combined in roles.
+3. Ability to create hierarchies: role can contain other roles.
 
-### Типичные роли в PostgreSQL:
-- **LOGIN ROLE (пользователь)** — роль, которой можно войти в систему.
-- **GROUP ROLE (группа)** — роль, которая объединяет права нескольких пользователей.
+### Typical roles in PostgreSQL:
+- **LOGIN ROLE (user)** — role that can log into system.
+- **GROUP ROLE (group)** — role that combines rights of multiple users.
 
-### Примеры:
+### Examples:
 ```sql
-    --Создание роли:
+    --Creating role:
     CREATE ROLE analyst;
-    --Назначение роли пользователю: 
+    --Assigning role to user: 
     GRANT analyst TO user1; 
-    --Создание роли с правами входа:
-    CREATE ROLE app_user LOGIN PASSWORD ‘secret’;
+    --Creating role with login rights:
+    CREATE ROLE app_user LOGIN PASSWORD 'secret';
 ```
 
-## 33. Что такое оконные функции в SQL и зачем они нужны?
+## 33. What are window functions in SQL and why are they needed?
 
-**Оконные функции (window functions)** — это специальные функции SQL, которые выполняют вычисления **над набором строк (окном)**, сохраняя при этом детализацию каждой строки.
+**Window functions (window functions)** are special SQL functions that perform calculations **over a set of rows (window)**, while preserving detail of each row.
 
-Отличие от агрегатных функций:
-- агрегаты (`SUM`, `AVG` и др.) **сворачивают строки** в один результат,
-- оконные функции **сохраняют каждую строку** и добавляют дополнительное вычисленное значение.
+Difference from aggregate functions:
+- aggregates (`SUM`, `AVG`, etc.) **collapse rows** into one result,
+- window functions **preserve each row** and add additional calculated value.
 
-### Зачем нужны оконные функции?
-Они позволяют решать аналитические задачи, которые сложно выразить с помощью обычных агрегатов или подзапросов:
-- сравнение текущей строки с другими (предыдущая/следующая запись);
-- нумерация строк и ранжирование;
-- кумулятивные суммы и скользящие средние;
-- вычисление процентов и долей;
-- упрощение построения отчётов (например, «топ N по каждой группе»).
+### Why are window functions needed?
+They allow solving analytical tasks that are hard to express with regular aggregates or subqueries:
+- comparing current row with others (previous/next record);
+- row numbering and ranking;
+- cumulative sums and moving averages;
+- calculating percentages and shares;
+- simplifying report building (e.g., "top N per group").
 
-### Синтаксис
+### Syntax
 ```sql
   <function>() OVER (
-      PARTITION BY <разделение>
-      ORDER BY <сортировка>
-      ROWS|RANGE <окно>
+      PARTITION BY <partitioning>
+      ORDER BY <sorting>
+      ROWS|RANGE <window>
   )
 ```
-- PARTITION BY — делит строки на группы (как GROUP BY, но без агрегации).
-- ORDER BY — порядок строк в окне.
-- ROWS / RANGE — рамки окна (текущая, предыдущие, все до текущей и т.п.).
+- PARTITION BY — divides rows into groups (like GROUP BY, but without aggregation).
+- ORDER BY — row order in window.
+- ROWS / RANGE — window bounds (current, previous, all up to current, etc.).
 
-### Примеры
-1. Нумерация строк
+### Examples
+1. Row numbering
 ```sql
   SELECT
     employee_id,
@@ -1561,7 +1561,7 @@ Deadlock — это ошибка проектирования или управ�
   FROM employees;
 ```
 
-2. Кумулятивная сумма
+2. Cumulative sum
 ```sql
   SELECT
     order_id,
@@ -1570,7 +1570,7 @@ Deadlock — это ошибка проектирования или управ�
   FROM orders;
 ```
 
-3. Сравнение с предыдущим значением
+3. Comparison with previous value
 ```sql
   SELECT
     order_id,
@@ -1579,7 +1579,7 @@ Deadlock — это ошибка проектирования или управ�
   FROM orders;
 ```
 
-4. Доля в группе
+4. Share in group
 ```sql
   SELECT
    department,
@@ -1588,52 +1588,52 @@ Deadlock — это ошибка проектирования или управ�
   FROM employees;
 ```
 
-### Основные типы оконных функций
+### Main types of window functions
 
-1. **Агрегатные функции как оконные**
-  - `SUM`
-  - `AVG`
-  - `COUNT`
-  - `MAX`
-  - `MIN`
+1. **Aggregate functions as window**
+- `SUM`
+- `AVG`
+- `COUNT`
+- `MAX`
+- `MIN`
 
-2. **Ранжирование**
-  - `ROW_NUMBER()` — уникальный номер строки
-  - `RANK()` / `DENSE_RANK()` — ранжирование с пропусками или без
-  - `NTILE(N)` — деление на группы
+2. **Ranking**
+- `ROW_NUMBER()` — unique row number
+- `RANK()` / `DENSE_RANK()` — ranking with or without gaps
+- `NTILE(N)` — dividing into groups
 
-3. **Функции смещения**
-  - `LAG()` / `LEAD()` — доступ к предыдущей или следующей строке
-  - `FIRST_VALUE()` / `LAST_VALUE()` — первое/последнее значение в окне  
+3. **Offset functions**
+- `LAG()` / `LEAD()` — access to previous or next row
+- `FIRST_VALUE()` / `LAST_VALUE()` — first/last value in window
 
-### Преимущества
+### Advantages
 
-- Читаемость SQL-запросов (без сложных подзапросов).
-- Более высокая производительность, чем вложенные запросы и джойны.
-- Поддержка аналитических задач (BI, OLAP).
-- Универсальность (PostgreSQL, Oracle, SQL Server, MySQL ≥ 8). 
+- SQL query readability (without complex subqueries).
+- Higher performance than nested queries and joins.
+- Support for analytical tasks (BI, OLAP).
+- Universality (PostgreSQL, Oracle, SQL Server, MySQL ≥ 8).
 
-## 34. Чем отличаются агрегатные функции от оконных?
+## 34. How do aggregate functions differ from window functions?
 
-### Агрегатные функции
-Агрегатные функции (`SUM`, `AVG`, `COUNT`, `MAX`, `MIN` и др.)
-- Применяются к **множеству строк** и возвращают **одно значение** для всей группы.
-- Используются вместе с `GROUP BY`.
+### Aggregate functions
+Aggregate functions (`SUM`, `AVG`, `COUNT`, `MAX`, `MIN`, etc.)
+- Applied to **multiple rows** and return **one value** for entire group.
+- Used together with `GROUP BY`.
 
-**Пример:**
+**Example:**
 ```sql
   SELECT department, AVG(salary) AS avg_salary
   FROM employees
   GROUP BY department;
 ```
-→ Для каждого департамента возвращается **одна строка** с усреднённой зарплатой.
+→ For each department returns **one row** with averaged salary.
 
-### Оконные функции
-Оконные функции используют те же агрегаты, но с добавлением `OVER()`.
-- Сохраняют **все строки** в результате.
-- Добавляют новое вычисляемое значение для каждой строки на основе "окна".
+### Window functions
+Window functions use same aggregates but with `OVER()` addition.
+- Preserve **all rows** in result.
+- Add new calculated value for each row based on "window".
 
-**Пример:**
+**Example:**
 ```sql
   SELECT
     employee_id,
@@ -1642,19 +1642,19 @@ Deadlock — это ошибка проектирования или управ�
     AVG(salary) OVER (PARTITION BY department) AS avg_salary_in_dept
   FROM employees;
 ```
-→ Каждому сотруднику добавляется колонка со средней зарплатой по его департаменту, но строки **не сворачиваются**.
+→ Each employee gets a column with average salary in their department, but rows **don't collapse**.
 
-### Итог
-- **Агрегатные функции** отвечают: *«Каков общий результат для группы?»*
-- **Оконные функции** отвечают: *«Каков результат для этой строки в контексте её группы?»*  
+### Summary
+- **Aggregate functions** answer: *"What's the overall result for the group?"*
+- **Window functions** answer: *"What's the result for this row in context of its group?"*
 
-## 35. Что такое PARTITION BY и ORDER BY в оконных функциях?
+## 35. What are PARTITION BY and ORDER BY in window functions?
 
 #### PARTITION BY
-- Разбивает набор строк на **группы (partitions)**, внутри которых применяется оконная функция.
-- Похоже на `GROUP BY`, но главное отличие — строки не сворачиваются, а остаются в результате.
+- Divides set of rows into **groups (partitions)**, within which window function is applied.
+- Similar to `GROUP BY`, but main difference — rows don't collapse, but remain in result.
 
-**Пример:**
+**Example:**
 ```sql
   SELECT
     employee_id,
@@ -1663,13 +1663,13 @@ Deadlock — это ошибка проектирования или управ�
     AVG(salary) OVER (PARTITION BY department) AS avg_salary_in_dept
   FROM employees;
 ```
-→ Средняя зарплата считается **отдельно по каждому департаменту**, но все строки сотрудников сохраняются.
+→ Average salary is calculated **separately for each department**, but all employee rows are preserved.
 
 ### ORDER BY
-- Определяет **порядок строк внутри каждой группы (partition)**.
-- Влияет на то, как функция считает значения (особенно для `ROW_NUMBER`, `RANK`, `LAG`, `LEAD`, кумулятивных сумм).
+- Defines **row order within each group (partition)**.
+- Affects how function calculates values (especially for `ROW_NUMBER`, `RANK`, `LAG`, `LEAD`, cumulative sums).
 
-**Пример:**
+**Example:**
 ```sql
   SELECT
     employee_id,
@@ -1678,14 +1678,14 @@ Deadlock — это ошибка проектирования или управ�
     ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS rank_in_dept
   FROM employees;
 ```
-→ В каждом департаменте сотрудники будут пронумерованы по зарплате от самой большой к самой маленькой.
+→ In each department employees will be numbered by salary from highest to lowest.
 
-### Использование вместе
-Обычно `PARTITION BY` и `ORDER BY` работают **в паре**:
-- `PARTITION BY` отвечает за разделение на группы.
-- `ORDER BY` определяет порядок внутри группы.
+### Using together
+Usually `PARTITION BY` and `ORDER BY` work **in pair**:
+- `PARTITION BY` responsible for group division.
+- `ORDER BY` defines order within group.
 
-**Пример:**
+**Example:**
 ```sql
   SELECT
     order_id,
@@ -1697,20 +1697,20 @@ Deadlock — это ошибка проектирования или управ�
     ) AS running_total
   FROM orders;
 ```
-→ Для каждого клиента (`customer_id`) вычисляется **накопительная сумма заказов** по дате.
+→ For each customer (`customer_id`) **cumulative sum of orders** is calculated by date.
 
-### Итог
-- **PARTITION BY** — задаёт «окно» для функции, определяя группы.
-- **ORDER BY** — определяет последовательность строк внутри каждой группы.  
-  Вместе они позволяют создавать мощные аналитические вычисления прямо в SQL.  
+### Summary
+- **PARTITION BY** — sets "window" for function, defining groups.
+- **ORDER BY** — defines sequence of rows within each group.  
+  Together they allow creating powerful analytical calculations directly in SQL.
 
-## 36. Чем отличаются ROW_NUMBER(), RANK() и DENSE_RANK()?
+## 36. How do ROW_NUMBER(), RANK() and DENSE_RANK() differ?
 
 #### ROW_NUMBER()
-- Присваивает уникальный порядковый номер строке в рамках окна.
-- **Номера всегда идут подряд** (1, 2, 3 …), даже если значения одинаковые.
+- Assigns unique sequential number to row within window.
+- **Numbers always go consecutively** (1, 2, 3 …), even if values are same.
 
-**Пример:**
+**Example:**
 ```sql
   SELECT
     employee_id,
@@ -1719,13 +1719,13 @@ Deadlock — это ошибка проектирования или управ�
     ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS row_num
   FROM employees;
 ```
-→ В каждом департаменте сотрудникам присвоятся уникальные номера по зарплате. Даже при одинаковых зарплатах номера будут разные.
+→ In each department employees get unique numbers by salary. Even with same salaries, numbers will be different.
 
 ### RANK()
-- Присваивает ранг строкам в зависимости от значения.
-- При одинаковых значениях назначается **одинаковый ранг**, но дальше будут «пропуски».
+- Assigns rank to rows based on value.
+- With same values, **same rank** is assigned, but then there will be "gaps".
 
-**Пример:**
+**Example:**
 ```sql
   SELECT
     employee_id,
@@ -1734,13 +1734,13 @@ Deadlock — это ошибка проектирования или управ�
     RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS rank_in_dept
   FROM employees;
 ```
-→ Если два сотрудника делят 1-е место, оба получат `1`, а следующий — `3` (будет пропуск).
+→ If two employees tie for 1st place, both get `1`, and next gets `3` (there will be gap).
 
 ### DENSE_RANK()
-- Работает как `RANK()`, но **без пропусков**.
-- При одинаковых значениях строки получают одинаковый ранг, но следующий идёт сразу по порядку.
+- Works like `RANK()`, but **without gaps**.
+- With same values, rows get same rank, but next goes immediately in order.
 
-**Пример:**
+**Example:**
 ```sql
   SELECT
     employee_id,
@@ -1749,23 +1749,23 @@ Deadlock — это ошибка проектирования или управ�
     DENSE_RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS dense_rank_in_dept
   FROM employees;
 ```
-→ Если два сотрудника делят 1-е место, оба получат `1`, а следующий — `2` (без пропуска).
+→ If two employees tie for 1st place, both get `1`, and next gets `2` (no gap).
 
-### Итог
-- **ROW_NUMBER()** — уникальная нумерация строк.
-- **RANK()** — учитывает равенство значений, но оставляет «дыры» в нумерации.
-- **DENSE_RANK()** — как `RANK()`, но без пропусков.  
+### Summary
+- **ROW_NUMBER()** — unique row numbering.
+- **RANK()** — considers value equality, but leaves "holes" in numbering.
+- **DENSE_RANK()** — like `RANK()`, but without gaps.
 
-## 37. Для чего нужны LAG() и LEAD()?
+## 37. What are LAG() and LEAD() used for?
 
-- **LAG()** и **LEAD()** — оконные функции смещения, которые позволяют получить значение **предыдущей** или **следующей** строки без использования подзапросов или JOIN.
-- Используются в аналитике для сравнения текущей строки с соседними.
+- **LAG()** and **LEAD()** are window offset functions that allow getting value from **previous** or **next** row without using subqueries or JOIN.
+- Used in analytics for comparing current row with neighbors.
 
 ### LAG()
-- Возвращает значение из **предыдущей строки** в рамках окна.
-- Если предыдущей строки нет, можно указать значение по умолчанию.
+- Returns value from **previous row** within window.
+- If no previous row, can specify default value.
 
-**Пример:**
+**Example:**
 ```sql
   SELECT
     order_id,
@@ -1774,13 +1774,13 @@ Deadlock — это ошибка проектирования или управ�
     LAG(amount, 1, 0) OVER (ORDER BY order_date) AS prev_amount
   FROM orders;
 ```
-→ Для каждого заказа добавляется сумма предыдущего заказа (`0`, если предыдущего нет).
+→ For each order adds amount of previous order (`0` if no previous).
 
 ### LEAD()
-- Возвращает значение из **следующей строки** в рамках окна.
-- Тоже можно указать значение по умолчанию.
+- Returns value from **next row** within window.
+- Can also specify default value.
 
-**Пример:**
+**Example:**
 ```sql
   SELECT
     order_id,
@@ -1789,10 +1789,10 @@ Deadlock — это ошибка проектирования или управ�
     LEAD(amount, 1, 0) OVER (ORDER BY order_date) AS next_amount
   FROM orders;
 ```
-→ Для каждого заказа добавляется сумма следующего заказа (`0`, если следующего нет).
+→ For each order adds amount of next order (`0` if no next).
 
-### Практическое применение
-1. Анализ динамики (например, разница между текущим и предыдущим значением).  
+### Practical application
+1. Trend analysis (e.g., difference between current and previous value).
 ```sql
   SELECT
     order_date,
@@ -1800,23 +1800,23 @@ Deadlock — это ошибка проектирования или управ�
     amount - LAG(amount) OVER (ORDER BY order_date) AS diff_from_prev
   FROM orders;
 ```
-2. Нахождение «провалов» или «скачков» в данных.
-3. Сравнение текущего и следующего события (например, определить время до следующего заказа клиента).
-4. В финансовых и BI-отчётах — подсчёт изменения показателей по периодам.
+2. Finding "dips" or "spikes" in data.
+3. Comparing current and next event (e.g., determine time until next customer order).
+4. In financial and BI reports — calculating indicator changes by periods.
 
 ---
 
-### Итог
-- **LAG()** — достаёт данные из прошлой строки.
-- **LEAD()** — достаёт данные из следующей строки.  
-  Обе функции упрощают аналитику, заменяя сложные подзапросы и делая SQL более читаемым. 
+### Summary
+- **LAG()** — gets data from previous row.
+- **LEAD()** — gets data from next row.  
+  Both functions simplify analytics, replacing complex subqueries and making SQL more readable.
 
-### 38. Что такое ROWS BETWEEN и как это работает?
+### 38. What is ROWS BETWEEN and how does it work?
 
-`ROWS BETWEEN` — это часть конструкции `OVER()` в оконных функциях, которая задаёт **рамки (frame)** окна относительно текущей строки.  
-Она определяет, какие строки попадут в вычисление для каждой строки результата.
+`ROWS BETWEEN` is part of `OVER()` construct in window functions that sets **window bounds (frame)** relative to current row.  
+It determines which rows will be included in calculation for each result row.
 
-#### Синтаксис
+#### Syntax
 ```sql
   () OVER (
     PARTITION BY …
@@ -1825,16 +1825,16 @@ Deadlock — это ошибка проектирования или управ�
   )
 ```
 
-### Варианты рамок окна
-- `UNBOUNDED PRECEDING` — от первой строки до текущей.
-- `n PRECEDING` — n строк до текущей.
-- `CURRENT ROW` — только текущая строка.
-- `n FOLLOWING` — n строк после текущей.
-- `UNBOUNDED FOLLOWING` — до последней строки.
+### Window frame options
+- `UNBOUNDED PRECEDING` — from first row to current.
+- `n PRECEDING` — n rows before current.
+- `CURRENT ROW` — only current row.
+- `n FOLLOWING` — n rows after current.
+- `UNBOUNDED FOLLOWING` — to last row.
 
-### Примеры
+### Examples
 
-**a) Кумулятивная сумма (от начала до текущей строки):**
+**a) Cumulative sum (from beginning to current row):**
 ```sql
   SELECT
     order_id,
@@ -1846,9 +1846,9 @@ Deadlock — это ошибка проектирования или управ�
     ) AS running_total
   FROM orders;
 ```
-→ Показывает накопительный итог для каждой строки.
+→ Shows cumulative total for each row.
 
-**b) Скользящее среднее (текущая строка + 2 предыдущие):**
+**b) Moving average (current row + 2 previous):**
 ```sql
   SELECT
     order_id,
@@ -1859,9 +1859,9 @@ Deadlock — это ошибка проектирования или управ�
     ) AS moving_avg
   FROM orders;
 ```
-→ Для каждой строки берутся её значение и два предыдущих, затем считается среднее.
+→ For each row takes its value and two previous, then calculates average.
 
-**c) Сравнение с соседями (предыдущая, текущая, следующая):**
+**c) Comparison with neighbors (previous, current, next):**
 ```sql
   SELECT
     order_id,
@@ -1872,21 +1872,21 @@ Deadlock — это ошибка проектирования или управ�
     ) AS local_sum
   FROM orders;
 ```
-→ Для каждой строки сумма считается из трёх значений: предыдущая + текущая + следующая.
+→ For each row sum is calculated from three values: previous + current + next.
 
-### Итог
-- `ROWS BETWEEN` управляет тем, какие строки попадают в расчёт оконной функции.
-- Позволяет делать **кумулятивные итоги**, **скользящие средние**, **локальные агрегаты**.
-- Отличается от простого `PARTITION BY` + `ORDER BY` тем, что даёт тонкий контроль над рамками окна. 
+### Summary
+- `ROWS BETWEEN` controls which rows are included in window function calculation.
+- Allows creating **cumulative totals**, **moving averages**, **local aggregates**.
+- Differs from simple `PARTITION BY` + `ORDER BY` by providing fine control over window bounds.
 
-## 39. Можно ли использовать оконные функции в WHERE?
+## 39. Can window functions be used in WHERE?
 
-Нет, **оконные функции нельзя использовать напрямую в `WHERE`**.  
-Причина:
-- `WHERE` выполняется **до** вычисления оконных функций.
-- Оконные функции считаются уже на этапе формирования результирующего набора (после `FROM` → `WHERE` → `GROUP BY` → `HAVING` → `WINDOW/SELECT` → `ORDER BY`).
+No, **window functions cannot be used directly in `WHERE`**.  
+Reason:
+- `WHERE` executes **before** window function calculation.
+- Window functions are calculated at result set formation stage (after `FROM` → `WHERE` → `GROUP BY` → `HAVING` → `WINDOW/SELECT` → `ORDER BY`).
 
-### Что будет, если попробовать?
+### What happens if you try?
 ```sql
   SELECT
     employee_id,
@@ -1894,14 +1894,14 @@ Deadlock — это ошибка проектирования или управ�
     salary,
     ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS row_num
   FROM employees
-  WHERE row_num = 1;  – Ошибка!
+  WHERE row_num = 1;  -- Error!
 ```
-→ Ошибка: колонка `row_num` не существует на момент выполнения `WHERE`.
+→ Error: column `row_num` doesn't exist at `WHERE` execution time.
 
-### Как правильно использовать?
-Есть три основных подхода:
+### How to use correctly?
+There are three main approaches:
 
-**a) Подзапрос (derived table / CTE)**
+**a) Subquery (derived table / CTE)**
 ```sql
   WITH ranked AS (
     SELECT
@@ -1915,10 +1915,10 @@ Deadlock — это ошибка проектирования или управ�
   FROM ranked
   WHERE row_num = 1;
 ```
-→ Получим по одному сотруднику с максимальной зарплатой в каждом департаменте.
+→ Get one employee with maximum salary in each department.
 
-**b) Фильтрация через `QUALIFY` (если поддерживается)**
-Некоторые СУБД (Snowflake, BigQuery, Oracle 23c, DuckDB) поддерживают `QUALIFY`:  
+**b) Filtering through `QUALIFY` (if supported)**
+Some DBMSs (Snowflake, BigQuery, Oracle 23c, DuckDB) support `QUALIFY`:
 ```sql
   SELECT
     employee_id,
@@ -1928,32 +1928,32 @@ Deadlock — это ошибка проектирования или управ�
   FROM employees
   QUALIFY row_num = 1;
 ```
-→ Упрощённый синтаксис, который фильтрует по оконным функциям.
+→ Simplified syntax that filters by window functions.
 
-**c) Использование оконной функции в `HAVING` (редко)**
-Обычно не применяется напрямую, так как `HAVING` идёт после агрегатов, но теоретически можно обернуть в подзапрос.
+**c) Using window function in `HAVING` (rarely)**
+Usually not applied directly, since `HAVING` comes after aggregates, but theoretically can be wrapped in subquery.
 
-### Итог
-- **Нельзя** использовать оконные функции в `WHERE` напрямую.
-- **Можно** фильтровать по их результату через **CTE**, **подзапрос** или **QUALIFY** (если поддерживается).  
+### Summary
+- **Cannot** use window functions in `WHERE` directly.
+- **Can** filter by their result through **CTE**, **subquery**, or **QUALIFY** (if supported).
 
-## 40. Что такое QUALIFY?
+## 40. What is QUALIFY?
 
-### Определение
-`QUALIFY` — это оператор SQL, который позволяет фильтровать строки **по результатам оконных функций**, подобно тому как:
-- `WHERE` фильтрует по обычным колонкам,
-- `HAVING` фильтрует по агрегатам.
+### Definition
+`QUALIFY` is a SQL operator that allows filtering rows **by window function results**, similar to how:
+- `WHERE` filters by regular columns,
+- `HAVING` filters by aggregates.
 
-Иными словами:  
-`QUALIFY` = "WHERE для оконных функций".
+In other words:  
+`QUALIFY` = "WHERE for window functions".
 
-### Зачем нужен?
-Оконные функции считаются **после** выполнения `WHERE` и `GROUP BY`.  
-Обычно, чтобы отфильтровать по оконной функции (`ROW_NUMBER`, `RANK`, `LAG` и др.), приходится использовать CTE или подзапрос.
+### Why is it needed?
+Window functions are calculated **after** `WHERE` and `GROUP BY` execution.  
+Usually, to filter by window function (`ROW_NUMBER`, `RANK`, `LAG`, etc.), you have to use CTE or subquery.
 
-`QUALIFY` упрощает это: позволяет писать фильтрацию по оконным функциям прямо в основном запросе.
+`QUALIFY` simplifies this: allows writing window function filtering directly in main query.
 
-### Пример без QUALIFY (через CTE)
+### Example without QUALIFY (via CTE)
 ```sql
   WITH ranked AS (
     SELECT
@@ -1968,7 +1968,7 @@ Deadlock — это ошибка проектирования или управ�
   WHERE row_num = 1;
 ```
 
-### Тот же запрос с QUALIFY
+### Same query with QUALIFY
 ```sql
   SELECT
     employee_id,
@@ -1978,16 +1978,16 @@ Deadlock — это ошибка проектирования или управ�
   FROM employees
   QUALIFY row_num = 1;
 ```
-→ Получим сотрудников с **максимальной зарплатой** в каждом департаменте, но запись выглядит намного короче.
+→ Get employees with **maximum salary** in each department, but record looks much shorter.
 
-### Где поддерживается QUALIFY
+### Where QUALIFY is supported
 - **BigQuery** (Google)
 - **Snowflake**
 - **Teradata**
 - **DuckDB**
-- **Oracle 23c** (новые версии)
+- **Oracle 23c** (newer versions)
 
-⚠️ В PostgreSQL, MySQL, MS SQL Server **оператора QUALIFY нет**, там используют CTE или подзапрос.
+⚠️ In PostgreSQL, MySQL, MS SQL Server **QUALIFY operator doesn't exist**, there they use CTE or subquery.
 
 ## 41. Оптимизация SQL-запросов: EXPLAIN и EXPLAIN ANALYZE
 
