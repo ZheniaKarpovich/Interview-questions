@@ -1989,206 +1989,207 @@ Usually, to filter by window function (`ROW_NUMBER`, `RANK`, `LAG`, etc.), you h
 
 ⚠️ In PostgreSQL, MySQL, MS SQL Server **QUALIFY operator doesn't exist**, there they use CTE or subquery.
 
-## 41. Оптимизация SQL-запросов: EXPLAIN и EXPLAIN ANALYZE
+## 41. SQL query optimization: EXPLAIN and EXPLAIN ANALYZE
 
-### Оптимизация SQL-запросов
-СУБД (PostgreSQL, MySQL, Oracle, SQL Server и др.) имеют **оптимизатор запросов**, который:
-- выбирает лучший план выполнения (`execution plan`);
-- решает, какие индексы использовать;
-- определяет порядок соединений (`join order`);
-- выбирает алгоритм соединений (Nested Loop, Merge Join, Hash Join);
-- оценивает стоимость (`cost`) каждой операции.
+### SQL query optimization
+DBMSs (PostgreSQL, MySQL, Oracle, SQL Server, etc.) have **query optimizers** that:
+- choose best execution plan (`execution plan`);
+- decide which indexes to use;
+- determine join order (`join order`);
+- choose join algorithms (Nested Loop, Merge Join, Hash Join);
+- estimate cost (`cost`) of each operation.
 
-Чтобы понять, **как именно будет выполнен запрос**, используют команду `EXPLAIN`.
+To understand **how exactly the query will be executed**, use the `EXPLAIN` command.
 
-### Что такое EXPLAIN?
-`EXPLAIN <query>` показывает **план выполнения** запроса:
-- какие шаги СУБД предпримет для получения результата;
-- будут ли использоваться индексы или полный скан таблицы (Seq Scan);
-- порядок соединений таблиц;
-- оценочную стоимость выполнения (`cost`).
+### What is EXPLAIN?
+`EXPLAIN <query>` shows **execution plan** of query:
+- what steps the DBMS will take to get result;
+- whether indexes will be used or full table scan (Seq Scan);
+- order of table joins;
+- estimated execution cost (`cost`).
 
-**Пример:**
+**Example:**
 ```sql
   EXPLAIN SELECT * FROM orders WHERE customer_id = 123;
-    --Вывод (PostgreSQL):
+    --Output (PostgreSQL):
     -- Seq Scan on orders  (cost=0.00..431.00 rows=10 width=64)
     -- Filter: (customer_id = 123)
 ```
-→ Запрос будет делать последовательное сканирование всей таблицы (`Seq Scan`).
+→ Query will do sequential scan of entire table (`Seq Scan`).
 
-### Что такое EXPLAIN ANALYZE?
-- `EXPLAIN ANALYZE <query>` выполняет запрос реально и показывает:
-  - фактическое время выполнения каждого шага;
-  - количество реально прочитанных строк;
-  - сколько строк вернуло каждое действие;
-  - разницу между **оценками оптимизатора** и **реальностью**.
+### What is EXPLAIN ANALYZE?
+- `EXPLAIN ANALYZE <query>` actually executes query and shows:
+  - actual execution time of each step;
+  - number of actually read rows;
+  - how many rows each action returned;
+  - difference between **optimizer estimates** and **reality**.
 
-**Пример:**
+**Example:**
 ```sql
     EXPLAIN ANALYZE
     SELECT * FROM orders WHERE customer_id = 123;
-    Вывод:
+    Output:
     Seq Scan on orders  (cost=0.00..431.00 rows=10 width=64) (actual time=0.012..15.234 rows=8 loops=1)
     Filter: (customer_id = 123)
     Rows Removed by Filter: 5000
     Execution Time: 15.300 ms
 ```
 
-### Как анализировать результат
-1. **Тип сканирования**
-  - `Seq Scan` — полный проход таблицы (медленно для больших данных).
-  - `Index Scan` / `Index Only Scan` — использование индекса (быстрее).
-  - `Bitmap Heap Scan` — комбинированное чтение через индекс.
+### How to analyze result
+1. **Scan type**
+- `Seq Scan` — full table pass (slow for large data).
+- `Index Scan` / `Index Only Scan` — using index (faster).
+- `Bitmap Heap Scan` — combined reading through index.
 
-2. **Join методы**
-  - `Nested Loop` — хорошо для маленьких выборок.
-  - `Merge Join` — хорошо для отсортированных данных.
-  - `Hash Join` — хорошо для больших неотсортированных таблиц.
+2. **Join methods**
+- `Nested Loop` — good for small datasets.
+- `Merge Join` — good for sorted data.
+- `Hash Join` — good for large unsorted tables.
 
 3. **Cost**
-  - Записывается как `cost=начало..конец`.
-  - Это «оценка стоимости» (чем меньше, тем лучше).
-  - Используется оптимизатором для выбора плана.
-  - - Из чего складывается cost
-      Оптимизатор учитывает:
-    - **Сканирование строк**
-      - последовательно (`Seq Scan`) дороже для больших таблиц;
-      - через индекс (`Index Scan`) дешевле, если выборка небольшая.
-    - **Селективность** условия (сколько строк попадёт в результат).
-    - **Стоимость чтения с диска vs из памяти** (в PostgreSQL настраивается параметрами `seq_page_cost`, `random_page_cost`, `cpu_tuple_cost`).
-    - **Сортировка** и **соединения** таблиц.
+- Written as `cost=start..end`.
+- This is "cost estimate" (lower is better).
+- Used by optimizer to choose plan.
+- - What makes up cost
+    Optimizer considers:
+- **Row scanning**
+  - sequential (`Seq Scan`) more expensive for large tables;
+  - through index (`Index Scan`) cheaper if selection is small.
+- **Selectivity** of condition (how many rows will match result).
+- **Cost of reading from disk vs memory** (in PostgreSQL configured by `seq_page_cost`, `random_page_cost`, `cpu_tuple_cost` parameters).
+- **Sorting** and **table joins**.
 
 4. **Rows**
-  - `rows=10` — прогноз оптимизатора.
-  - `actual rows=...` — реальные данные при `EXPLAIN ANALYZE`.
-  - Большая разница → оптимизатор неправильно оценил селективность условия.
+- `rows=10` — optimizer prediction.
+- `actual rows=...` — real data with `EXPLAIN ANALYZE`.
+- Big difference → optimizer incorrectly estimated condition selectivity.
 
 5. **Time**
-  - `actual time=0.012..15.234` — реальное время выполнения шага.
-  - `Execution Time` — общее время выполнения запроса.
+- `actual time=0.012..15.234` — actual execution time of step.
+- `Execution Time` — total query execution time.
 
-### Как использовать для оптимизации
-- Если видишь `Seq Scan` на большой таблице → нужен **индекс**.
-- Если слишком много строк «Rows Removed by Filter» → возможно, стоит **переписать условие**.
-- Если `Nested Loop` на больших таблицах → стоит подумать о **Hash Join** или **Merge Join**.
-- Если `actual rows` сильно отличается от `rows` → стоит обновить статистику (`ANALYZE`) или переписать запрос.
+### How to use for optimization
+- If you see `Seq Scan` on large table → need **index**.
+- If too many rows "Rows Removed by Filter" → maybe worth **rewriting condition**.
+- If `Nested Loop` on large tables → worth thinking about **Hash Join** or **Merge Join**.
+- If `actual rows` differs significantly from `rows` → worth updating statistics (`ANALYZE`) or rewriting query.
 
-### Итог
-- `EXPLAIN` — показывает план выполнения (оценки оптимизатора).
-- `EXPLAIN ANALYZE` — реально выполняет запрос и показывает **фактические цифры**.
-- Оптимизация сводится к:
-  - использованию индексов,
-  - выбору правильного типа соединений,
-  - минимизации лишнего чтения строк,
-  - обновлению статистики таблиц.  
+### Summary
+- `EXPLAIN` — shows execution plan (optimizer estimates).
+- `EXPLAIN ANALYZE` — actually executes query and shows **real numbers**.
+- Optimization boils down to:
+  - using indexes,
+  - choosing right join types,
+  - minimizing unnecessary row reading,
+  - updating table statistics.
 
-## 42. Что такое BASE-подход в базах данных?
+## 42. What is the BASE approach in databases?
 
-**BASE** — это акроним, противопоставляемый классической модели **ACID**.  
-Используется в основном в **NoSQL** и распределённых базах данных, где важна масштабируемость и доступность.
+**BASE** is an acronym opposed to the classical **ACID** model.  
+Used mainly in **NoSQL** and distributed databases where scalability and availability are important.
 
-BASE расшифровывается как:
-- **Basically Available** — «в основном доступная» (система всегда отвечает, пусть даже не всегда с актуальными данными).
-- **Soft state** — «мягкое состояние» (состояние системы может со временем меняться, даже без новых операций, например, при репликации).
-- **Eventually consistent** — «согласованность в конечном итоге» (данные в разных узлах со временем синхронизируются, но не мгновенно).
+BASE stands for:
+- **Basically Available** — "basically available" (system always responds, even if not always with current data).
+- **Soft state** — "soft state" (system state can change over time, even without new operations, e.g., during replication).
+- **Eventually consistent** — "eventual consistency" (data in different nodes synchronizes over time, but not instantly).
 
-### Отличие от ACID
-- **ACID**: строгое соблюдение атомарности, согласованности, изоляции и долговечности транзакций.
-- **BASE**: жертвует строгой согласованностью ради **доступности и масштабируемости**.
+### Difference from ACID
+- **ACID**: strict adherence to atomicity, consistency, isolation, and durability of transactions.
+- **BASE**: sacrifices strict consistency for **availability and scalability**.
 
-### Где применяется
-- Распределённые системы (Cassandra, DynamoDB, CouchDB, Riak).
-- Высоконагруженные веб-приложения, где важнее, чтобы система **не падала** и отвечала быстро.
-- Когда допустима некоторая задержка синхронизации данных.
+### Where it's applied
+- Distributed systems (Cassandra, DynamoDB, CouchDB, Riak).
+- High-load web applications where it's more important that system **doesn't crash** and responds quickly.
+- When some data synchronization delay is acceptable.
 
-### Пример
-Система бронирования авиабилетов в стиле BASE:
-- Несколько пользователей могут одновременно видеть один и тот же «последний билет».
-- Возможно, что система продаст билет двум клиентам.
-- Но через короткое время данные синхронизируются, и реальная доступность исправляется.
+### Example
+Airline booking system in BASE style:
+- Multiple users can simultaneously see the same "last ticket".
+- It's possible that system will sell ticket to two customers.
+- But through short time data synchronizes and real availability is corrected.
 
-### Плюсы
-- Высокая доступность даже при сбоях.
-- Отличная масштабируемость в распределённых системах.
-- Более высокая производительность.
+### Pros
+- High availability even during failures.
+- Excellent scalability in distributed systems.
+- Higher performance.
 
-### Минусы
-- Нет строгой согласованности (можно временно читать «устаревшие» данные).
-- Сложнее разрабатывать приложения, где требуется жёсткая транзакционная логика.
-- Согласованность достигается не мгновенно, а «со временем».
+### Cons
+- No strict consistency (can temporarily read "stale" data).
+- Harder to develop applications requiring strict transactional logic.
+- Consistency achieved not instantly, but "over time".
 
-### Итог
-**BASE** — это подход, противопоставляемый ACID, ориентированный на **масштабируемость и доступность** ценой строгой согласованности.  
-Он идеально подходит для NoSQL и распределённых систем, где важно «лучше ответить неточно, чем не ответить совсем».  
+### Summary
+**BASE** is an approach opposed to ACID, focused on **scalability and availability** at the cost of strict consistency.  
+It's ideal for NoSQL and distributed systems where it's important to "respond inaccurately rather than not respond at all".
 
-## 43. В чем отличие BASE и ACID подходов?
+## 43. What is the difference between BASE and ACID approaches?
 
-### ACID (традиционный подход для реляционных БД)
-- **Atomicity (Атомарность)** — транзакция выполняется полностью или не выполняется вовсе.
-- **Consistency (Согласованность)** — данные всегда остаются в согласованном состоянии.
-- **Isolation (Изолированность)** — параллельные транзакции не мешают друг другу.
-- **Durability (Надёжность)** — данные сохраняются даже при сбое.
+### ACID (traditional approach for relational DBs)
+- **Atomicity (Атомарность)** — transaction executes completely or not at all.
+- **Consistency (Согласованность)** — data always remains in consistent state.
+- **Isolation (Изолированность)** — parallel transactions don't interfere with each other.
+- **Durability (Надёжность)** — data persists even after failure.
 
-➡ Подходит для банковских, финансовых систем, где важна **строгая корректность**.
+➡ Suitable for banking, financial systems where **strict correctness** is important.
 
-### BASE (подход для распределённых NoSQL систем)
-- **Basically Available** — система всегда отвечает, даже если не все данные согласованы.
-- **Soft State** — состояние данных может меняться со временем (например, при репликации).
-- **Eventually Consistent** — в конечном итоге данные синхронизируются, но не обязательно мгновенно.
+### BASE (approach for distributed NoSQL systems)
+- **Basically Available** — system always responds, even if not all data is consistent.
+- **Soft State** — data state can change over time (e.g., during replication).
+- **Eventually Consistent** — eventually data synchronizes, but not necessarily instantly.
 
-➡ Подходит для масштабируемых и высоконагруженных приложений (соцсети, онлайн-магазины), где важна **доступность** и **быстродействие**.
+➡ Suitable for scalable and high-load applications (social networks, online stores) where **availability** and **performance** are important.
 
-### Сравнение ACID vs BASE
+### ACID vs BASE comparison
 
-| Критерий           | ACID                                   | BASE                                      |
+| Criterion           | ACID                                   | BASE                                      |
 |--------------------|----------------------------------------|-------------------------------------------|
-| **Цель**           | Корректность и надёжность              | Масштабируемость и доступность            |
-| **Согласованность** | Сразу и всегда                         | В конечном итоге (eventual consistency)   |
-| **Характер данных**| Строгое состояние                      | Мягкое состояние (soft state)             |
-| **Транзакции**     | Строгие, атомарные                     | Ослабленные, распределённые               |
-| **Применение**     | Банки, финансы, ERP-системы            | Big Data, соцсети, e-commerce, IoT        |
-| **Плюсы**          | Высокая корректность                   | Высокая доступность и масштабируемость    |
-| **Минусы**         | Ограниченная масштабируемость          | Возможна временная несогласованность      |
+| **Goal**           | Correctness and reliability              | Scalability and availability            |
+| **Consistency** | Immediately and always                         | Eventually (eventual consistency)   |
+| **Data nature**| Strict state                      | Soft state (soft state)             |
+| **Transactions**     | Strict, atomic                     | Relaxed, distributed               |
+| **Application**     | Banks, finance, ERP systems            | Big Data, social networks, e-commerce, IoT        |
+| **Pros**          | High correctness                   | High availability and scalability    |
+| **Cons**         | Limited scalability          | Possible temporary inconsistency      |
 
-### Итог
-- **ACID** = строгая согласованность и надёжность, но меньше гибкости при масштабировании.
-- **BASE** = высокая доступность и масштабируемость, но согласованность достигается не сразу.  
+### Summary
+- **ACID** = strict consistency and reliability, but less flexibility when scaling.
+- **BASE** = high availability and scalability, but consistency achieved not immediately.
 
-## 44. У вас есть таблица логов с миллиардами строк. Как вы будете ускорять поиск по дате и `user_id`?
+## 44. You have a log table with billions of rows. How will you speed up searches by date and `user_id`?
 
-Оптимизация должна строиться по нескольким направлениям:
+Optimization should be built in several directions:
 
-### 1. Партиционирование
-- Разбить таблицу по дате (`RANGE PARTITION BY ts`), чтобы запросы сразу отбрасывали ненужные партиции (*partition pruning*).
-- Для больших партиций можно добавить субпартиционирование по хэшу `user_id`.  
-  → Это позволит читать только релевантные куски данных.
+### 1. Partitioning
+- Split table by date (`RANGE PARTITION BY ts`), so queries immediately discard unnecessary partitions (*partition pruning*).
+- For large partitions can add sub-partitioning by hash of `user_id`.  
+  → This allows reading only relevant data chunks.
 
-### 2. Индексы
-- Создать составной индекс `(user_id, ts)` или `(ts, user_id)` — порядок выбирается по реальным паттернам запросов.
-- Для широких диапазонов дат использовать **BRIN-индекс** по `ts`, он очень лёгкий и хорошо работает на больших append-only логах.
-- Для часто используемых «горячих» данных сделать **частичный индекс**, например, только за последние 30 дней.
-- Если запросы возвращают дополнительные поля — использовать **covering-индекс (INCLUDE)**.
+### 2. Indexes
+- Create composite index `(user_id, ts)` or `(ts, user_id)` — order chosen by real query patterns.
+- For wide date ranges use **BRIN index** on `ts`, it's very lightweight and works well on large append-only logs.
+- For frequently used "hot" data create **partial index**, e.g., only for last 30 days.
+- If queries return additional fields — use **covering index (INCLUDE)**.
 
-### 3. Переписывание запросов
-- Не использовать функции над колонкой даты (`date(ts)`) — это ломает использование индекса.
-- Вместо этого задавать диапазон:
+### 3. Query rewriting
+- Don't use functions on date column (`date(ts)`) — this breaks index usage.
+- Instead specify range:
 ```sql
-  ts >= ‘2025-08-24 00:00:00’ AND ts < ‘2025-08-25 00:00:00’
+  ts >= '2025-08-24 00:00:00' AND ts < '2025-08-25 00:00:00'
 ```
-### 4. Кластеризация и обслуживание
-- Использовать `CLUSTER` или `pg_repack` для поддержания локальности данных.
-- Следить за статистикой (`ANALYZE`) и параметрами `autovacuum`.
+### 4. Clustering and maintenance
+- Use `CLUSTER` or `pg_repack` to maintain data locality.
+- Monitor statistics (`ANALYZE`) and `autovacuum` parameters.
 
-### 5. Дополнительно
-- Для сложных аналитических сценариев использовать **TimescaleDB (hypertables)** или материализованные представления.
-- Проверять реальный план выполнения через:
+### 5. Additionally
+- For complex analytical scenarios use **TimescaleDB (hypertables)** or materialized views.
+- Check real execution plan through:
 ```sql
   EXPLAIN (ANALYZE, BUFFERS)
     SELECT …
 ```
 
-### Итог
-- **Партиционирование по дате** + **индексы по `user_id` и `ts`** — основное решение.
-- **BRIN и частичные индексы** дают выигрыш для огромных объёмов.
-- Ключевой принцип — «чтобы СУБД читала как можно меньше строк и страниц».  
+### Summary
+- **Date partitioning** + **indexes on `user_id` and `ts`** — main solution.
+- **BRIN and partial indexes** give advantage for huge volumes.
+- Key principle — "so that DBMS reads as few rows and pages as possible".  
+
