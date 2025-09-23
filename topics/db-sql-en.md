@@ -993,15 +993,23 @@ which allows combining SQL statements with procedural programming capabilities.
 
 **Example:**
 ```sql
-  DECLARE
+DECLARE
+  -- Объявляем переменную для хранения количества сотрудников
   v_total NUMBER;
-  BEGIN
-    SELECT COUNT(*) INTO v_total FROM employees;
-    DBMS_OUTPUT.PUT_LINE('Total employees: ' || v_total);
-  EXCEPTION
+BEGIN
+  -- Считаем количество строк в таблице employees и сохраняем в переменную
+  SELECT COUNT(*) 
+  INTO v_total 
+  FROM employees;
+
+  -- Выводим результат на экран
+  DBMS_OUTPUT.PUT_LINE('Total employees: ' || v_total);
+
+EXCEPTION
+  -- Ловим все возможные ошибки и выводим сообщение
   WHEN OTHERS THEN
     DBMS_OUTPUT.PUT_LINE('Error occurred');
-  END;
+END;
 ```
 **PL/SQL limitations:**
 1. **Maintenance complexity** — excessive placement of business logic in DB complicates debugging and testing.
